@@ -2,12 +2,14 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using TMPro;
 public class MainMenu : MonoBehaviour {
     public TextMeshProUGUI nametext;
     public GameObject MainMenuPanel;
     public GameObject NameMenuPanel;
     public GameObject IntroPanel;
+    public GameObject NameButton;
     public string username;
     public void NewGame() {
         MainMenuPanel.SetActive(false);
@@ -25,10 +27,11 @@ public class MainMenu : MonoBehaviour {
         SceneManager.LoadScene("GamePlay");
     }
     public void NameInput() {
-        Debug.Log(nametext.text.Length);
-        if (nametext.text.Length>8) {
-            nametext.text=nametext.text.Remove(nametext.text.Length-1);
-            Debug.Log(nametext.text.Length);
+        if(nametext.text.Length<3){
+            NameButton.SetActive(false);
+        }
+        else{
+            NameButton.SetActive(true);
         }
     }
     void start(){
@@ -37,7 +40,7 @@ public class MainMenu : MonoBehaviour {
         IntroPanel.SetActive(false);
     }
     void update(){
-
+        
     }
 }
 //MAKE ANOTHER FUNCTION FOR TESTING ON NAME INPUT TO LIMIT THE SIZE OF TEXT

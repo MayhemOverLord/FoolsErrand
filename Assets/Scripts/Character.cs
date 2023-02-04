@@ -5,6 +5,8 @@ using UnityEngine.SceneManagement;
 using TMPro;
 public class Character : MonoBehaviour {
     public string charname;
+    public int level;
+    public int experience;
     public int maxhealth;
     public int currhealth;
     public int maxmana;
@@ -18,6 +20,8 @@ public class Character : MonoBehaviour {
     public int direction;
     public Character(string nam, int str, int agi, int con, int def, int inte, int wis) {
         charname=nam;
+        level=1;
+        experience=0;
         maxhealth = 10*con;
         currhealth = maxhealth;
         maxmana = 5*wis;

@@ -56,7 +56,7 @@ public class Character : MonoBehaviour {
         }
         return 9999999;
     }
-    public int heal(int value) {
+    public int Heal(int value) {
         if (currhealth+value>maxhealth){
             currhealth=maxhealth;
         }
@@ -65,7 +65,7 @@ public class Character : MonoBehaviour {
         }
         return currhealth;
     }
-    public int harm(int value) {
+    public int Harm(int value) {
         if (currhealth-value<0){
             currhealth=0;
         }

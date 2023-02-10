@@ -1,15 +1,16 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using TMPro;
+
 public class PlayerController : MonoBehaviour
 {
     public float speed = 4;
     public Transform goal;
+
     void Start() {
         goal.SetParent(null);
     }
+
     void Update() {
         transform.position = Vector3.MoveTowards(transform.position, goal.position, speed*Time.deltaTime);
         if(Vector3.Distance(transform.position,goal.position) == 0f){
@@ -25,5 +26,4 @@ public class PlayerController : MonoBehaviour
             //Interaction
         }
     }
-
 }

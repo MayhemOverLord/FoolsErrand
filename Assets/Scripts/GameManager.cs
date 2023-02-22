@@ -14,18 +14,21 @@ public class GameManager : MonoBehaviour{
     public Tile[] tiles;
     public Tilemap tilemap;
     public float speed = 4;
-    public int gridsize = 10;
+    public int gridsize = 14;
     public Transform goal;
-    public int[,] gridstore;
-    public int[] PlayerLocation = new int[2];
-    public List<int> alltiles = new List<int>{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44};
-    public bool[,] tilemove = {
+    private int[,] gridstore;
+    public bool squaregen = false;
+    private int[] PlayerLocation = new int[2];
+    private int direction;
+    private List<int> alltiles = new List<int>{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44};
+    private List<int> squaretiles = new List<int>{0,1,5,9,13,17,19,21,23,25};
+    private bool[,] tilemove = { //The set of data that checks whether a player can move in each direction
         {false,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,true,true},
         {false,true,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,false,true,false,false,true,false,true,true,true,true,true,true,true,true,true,true,true,true,true},
         {false,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,false,false,false,false,false,false,true,false,false,true,true,true,true,true,true,true,true,true,true,true,true,true,true},
         {false,true,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,true,true,true,true,true,true,true,true,true,true,true,true,true}
     };
-    public int[,] connections = {
+    private int[,] connections = { //Set of direction connection groups for each tile
         {4,4,4,4}, //0 N
         {0,0,0,0}, //1 A
         {4,1,2,3}, //2 B1
@@ -72,38 +75,122 @@ public class GameManager : MonoBehaviour{
         {3,1,2,3}, //43 Q12
         {3,3,3,3} //44 Q13
     };
+    //Set of connections for more dynamic generation
     public List<List<List<int>>> connectClassify = new List<List<List<int>>>{
     new List<List<int>>{new List<int>{1,5,32,33,36},new List<int>{1,9,33,34,37},new List<int>{1,13,34,35,38},new List<int>{1,17,32,35,39}}, //Empty
     new List<List<int>>{new List<int>{2,15,17,19,35,39,43},new List<int>{5,6,21,32,36,40},new List<int>{7,9,10,23,33,37,41},new List<int>{11,13,14,25,34,38,42}}, //Left
     new List<List<int>>{new List<int>{3,6,9,21,34,37,40},new List<int>{7,10,13,23,35,38,41},new List<int>{11,14,17,25,32,39,42},new List<int>{5,15,19,33,36,43}}, //Right
-    new List<List<int>>{new List<int>{4,7,8,14,16,18,20,28,31,38,41,42,44},new List<int>{2,4,8,11,12,20,22,29,30,39,42,43,44},new List<int>{12,22,24,26,31,36,40,43,44},new List<int>{3,4,10,12,16,18,24,27,30,37,40,41,44}}, //Both
-    new List<List<int>>{new List<int>{0,10,11,12,13,22,23,24,25,26,27,29,30},new List<int>{0,14,15,16,17,18,19,24,25,26,27,28,31},new List<int>{0,2,3,4,5,18,19,20,21,26,27,28,30},new List<int>{0,6,7,8,9,20,21,22,23,26,28,29,31}} //Wall
+    new List<List<int>>{new List<int>{4,7,8,14,16,18,20,28,31,38,41,42,44},new List<int>{2,4,8,11,12,20,22,29,30,39,42,43,44},new List<int>{6,8,12,22,15,16,24,26,31,36,40,43,44},new List<int>{3,4,10,12,16,18,24,27,30,37,40,41,44}}, //Both
+    new List<List<int>>{new List<int>{0,10,11,12,13,22,23,24,25,26,27,29,30},new List<int>{0,14,15,16,17,18,19,24,25,26,27,28,31},new List<int>{0,2,3,4,5,18,19,20,21,26,27,28,30},new List<int>{0,6,7,8,9,20,21,22,23,26,28,29,31}}, //Wall
+    new List<List<int>>{new List<int>{1,5,32,33,36,5,32,33,36},new List<int>{1,9,33,34,37,9,33,34,37},new List<int>{1,13,34,35,38,13,34,35,38},new List<int>{1,17,32,35,39,17,32,35,39}}
+    };
+    //Set of connections for more robust/square generation
+    public List<List<List<int>>> connectDepoint = new List<List<List<int>>>{
+    new List<List<int>>{new List<int>{1,5},new List<int>{1,9},new List<int>{1,13},new List<int>{1,17}}, //Empty
+    new List<List<int>>{new List<int>{17,19},new List<int>{5,21},new List<int>{9,23},new List<int>{13,25}}, //Left
+    new List<List<int>>{new List<int>{9,21},new List<int>{13,23},new List<int>{17,25},new List<int>{5,19}}, //Right
+    new List<List<int>>{new List<int>{4,7,8,14,16,18,20},new List<int>{2,4,8,11,12,20,22},new List<int>{12,22,24},new List<int>{3,4,10,12,16,18,24}}, //Both
+    new List<List<int>>{new List<int>{0,13,23,25},new List<int>{0,17,19,25},new List<int>{0,5,19,21},new List<int>{0,9,21,23}} //Wall
     };
     public void GridDisplay() {
+        bool validgen = false;
+        int counter = 0;
+        while (!validgen) //Runs grid generation until a valid grid has been generated
+        {
+            GridGen();
+            validgen = GridCheck();
+            if(counter>=10000){
+                break;
+            }
+            counter = counter+1;
+        }
+        //Outputs the tile display
         tilemap.ClearAllTiles();
-        GridGen();
         for (int y=0;y<gridsize;y++){
             for (int x=0;x<gridsize;x++){
-                Debug.Log(x.ToString()+" , "+y.ToString());
-                Debug.Log(tiles[gridstore[y,x]].ToString());
                 tilemap.SetTile(new Vector3Int(x*2+1, y*2+1, 0), tiles[gridstore[y,x]]);
             }
         }
+        //Sets player location to the centre of the screen
+        //transform.position = new Vector3Int(gridsize*-1,gridsize*-1, 0);
+        //goal.position = new Vector3Int(gridsize*-1,gridsize*-1, 0);
+        transform.position = new Vector3Int(-2,-2, 0);
+        goal.position = new Vector3Int(-2,-2, 0);
+        direction = 0;
         PlayerLocate();
     }
-    public void GridGen() {
-        gridstore = new int[gridsize,gridsize];
-        for(int i=0;i<gridsize;i++){
-            for(int j=0;j<gridsize;j++){
-                if((i<=2)||(j<=2)||(i>=gridsize-3)||(j>=gridsize-3)){
-                //    gridstore[i,j]=0;
-                    gridstore[i,j]=100;
+    private void GridStart() //Sets the initial values for the dungeon tile grid
+    {
+        gridstore = new int[gridsize, gridsize];
+        for (int i = 0; i < gridsize; i++)
+        {
+            for (int j = 0; j < gridsize; j++)
+            {
+                if ((i <= 0) || (j <= 0) || (i >= gridsize - 1) || (j >= gridsize - 1))
+                {
+                    gridstore[i, j] = 0; //Solid tiles
                 }
-                else{
-                    gridstore[i,j]=100;
+                else
+                {
+                    gridstore[i, j] = 100; //Unclassified tiles
                 }
             }
         }
+    }
+    private bool GridCheck() //Checks whether the grid has been successfully created or lacks tiles.
+    {
+        for (int i = 0; i < gridsize; i++)
+        {
+            for (int j = 0; j < gridsize; j++)
+            {
+                if (gridstore[i, j] == 100) //If tile hasn't been classified
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    private List<List<int>> RoomCentFinder() {
+        List<List<int>> trcorners = new List<List<int>>();
+        List<List<int>> blcorners = new List<List<int>>();
+        List<List<int>> roomcents = new List<List<int>>();
+        for (int i = 0; i < gridsize; i++)
+        {
+            for (int j = 0; j < gridsize; j++)
+            {
+                if(gridstore[i,j]==21){
+                    trcorners.Add(new List<int>{i,j});
+                }
+            }
+        }
+        for(int i = 0; i<trcorners.Count;i++){
+            List<int> coordinate = new List<int>{trcorners[i][0],trcorners[i][1]};
+            bool finding = true;
+            bool moveleft = true;
+            while (finding){
+                while (moveleft){
+                    coordinate[1]=coordinate[1]-1;
+                    if(gridstore[coordinate[0],coordinate[1]]==19){
+                        moveleft=false;
+                    }
+                }
+                coordinate[0]=coordinate[0]-1;
+                if(gridstore[coordinate[0],coordinate[1]]==25){
+                    finding=false;
+                    blcorners.Add(coordinate);
+                }
+            }
+            roomcents.Add(new List<int>{((int)((trcorners[i][0]+blcorners[i][0])/2d)),((int)((trcorners[i][1]+blcorners[i][1])/2d))});
+        }
+        return roomcents;
+    }
+    private void DoorMaker(){
+        List<List<int>> cents = RoomCentFinder();
+    }
+    private void GridGen() { //Function for the generation of the dungeon layout
+        //Preparation of initial variables
+        GridStart();
         int[] coordinate = new int[2]{gridsize/2,gridsize/2};
         List<int> queue = new List<int>{
             coordinate[0]*gridsize+coordinate[1]
@@ -111,21 +198,28 @@ public class GameManager : MonoBehaviour{
         List<List<int>> carry = new List<List<int>>{
             new List<int>{coordinate[0],coordinate[1]}
         };
-        gridstore[gridsize/2,gridsize/2]=21;
+        Random rando = new Random();
+        int roommod=(gridsize/5)+1;
+        for (int i = 0; i < roommod;i++){
+            gridstore[rando.Next(1,gridsize-3),rando.Next(1,gridsize-3)]=21;
+        }
         bool running=true;
         int increment=0;
         while(running){
             List<int> hold = new List<int>();
-            Debug.Log(queue.Count);
             List<int> options = alltiles;
+            if(squaregen){
+                options=squaretiles;
+            }
             if(coordinate[0]>0){
                 hold = new List<int>{coordinate[0]-1,coordinate[1]};
                 if(!queue.Contains(hold[0]*gridsize+hold[1])){
                     queue.Add(hold[0]*gridsize+hold[1]);
                     carry.Add(hold);
                 }
+                //Checks options based on tile from the south
                 if(gridstore[hold[0],hold[1]]!=100){
-                    options=options.Intersect(connectClassify[connections[gridstore[hold[0],hold[1]],1]][1]).ToList();
+                    options = options.Intersect(connectClassify[connections[gridstore[hold[0], hold[1]], 0]][0]).ToList();
                 }
             }
             if(coordinate[0]<gridsize-1){
@@ -134,8 +228,9 @@ public class GameManager : MonoBehaviour{
                     queue.Add(hold[0]*gridsize+hold[1]);
                     carry.Add(hold);
                 }
+                //Checks options based on tile from the north
                 if(gridstore[hold[0],hold[1]]!=100){
-                    options=options.Intersect(connectClassify[connections[gridstore[hold[0],hold[1]],3]][3]).ToList();
+                    options = options.Intersect(connectClassify[connections[gridstore[hold[0], hold[1]], 2]][2]).ToList();
                 }
             }
             if(coordinate[1]>0){
@@ -144,8 +239,9 @@ public class GameManager : MonoBehaviour{
                     queue.Add(hold[0]*gridsize+hold[1]);
                     carry.Add(hold);
                 }
+                //Checks options based on tile from the west
                 if(gridstore[hold[0],hold[1]]!=100){
-                    options=options.Intersect(connectClassify[connections[gridstore[hold[0],hold[1]],0]][0]).ToList();
+                    options = options.Intersect(connectClassify[connections[gridstore[hold[0], hold[1]], 1]][1]).ToList();
                 }
             }
             if(coordinate[1]<gridsize-1){
@@ -154,17 +250,17 @@ public class GameManager : MonoBehaviour{
                     queue.Add(hold[0]*gridsize+hold[1]);
                     carry.Add(hold);
                 }
+                //Checks options based on tile from the east
                 if(gridstore[hold[0],hold[1]]!=100){
-                    options=options.Intersect(connectClassify[connections[gridstore[hold[0],hold[1]],2]][2]).ToList();
+                    options = options.Intersect(connectClassify[connections[gridstore[hold[0], hold[1]], 3]][3]).ToList();
                 }
             }
-            if (options.Count<1){
-                Debug.Log(coordinate[0]);
-                Debug.Log(coordinate[1]);
-            }
             if(gridstore[coordinate[0],coordinate[1]]==100){
-                Random rand = new Random();
-                gridstore[coordinate[0],coordinate[1]]=options[rand.Next(options.Count()-1)];
+                if (options.Count > 0)
+                {
+                    Random rand = new Random();
+                    gridstore[coordinate[0], coordinate[1]] = options[rand.Next(options.Count() - 1)];
+                }
             }
             if(increment==queue.Count-1){
                 running=false;
@@ -172,7 +268,86 @@ public class GameManager : MonoBehaviour{
             else{
                 increment=increment+1;
                 coordinate=carry[increment].ToArray();
-                Debug.Log(queue.Count);
+            }
+        }
+    }
+    private void GridGen2() { //Function for the generation of the dungeon layout
+        //Preparation of initial variables
+        GridStart();
+        Random rando = new Random();
+        int roommod=gridsize/3;
+        for (int i = 0; i < roommod;i++){
+            gridstore[rando.Next(2,gridsize-2),rando.Next(2,gridsize-2)]=21;
+        }
+        int[] coordinate = new int[2]{gridsize/2,gridsize/2};
+        bool running=true;
+        while(running){
+            List<int> hold = new List<int>();
+            List<int> options = alltiles;
+            List<int> bestop = alltiles;
+            if(squaregen){
+                options=squaretiles;
+            }
+            int checker = 0;
+            for (int i = 1; i<gridsize-1;i++){
+                for (int j = 1; j<gridsize-1;j++){
+                    if(gridstore[i,j]==100){
+                        checker=checker+1;
+                        if(squaregen){
+                            options=squaretiles;
+                        }
+                        else{
+                            options=alltiles;
+                        }
+                        if(i>0){
+                            hold = new List<int>{i-1,j};
+                            //Checks options based on tile from the south
+                            if(gridstore[hold[0],hold[1]]!=100){
+                                options = options.Intersect(connectClassify[connections[gridstore[hold[0], hold[1]], 0]][0]).ToList();
+                            }
+                        }
+                        if(i<gridsize-1){
+                            hold = new List<int>{i+1,j};
+                            //Checks options based on tile from the north
+                            if(gridstore[hold[0],hold[1]]!=100){
+                                options = options.Intersect(connectClassify[connections[gridstore[hold[0], hold[1]], 2]][2]).ToList();
+                            }
+                        }
+                        if(j>0){
+                            hold = new List<int>{i,j-1};
+                            //Checks options based on tile from the west
+                            if(gridstore[hold[0],hold[1]]!=100){
+                                options = options.Intersect(connectClassify[connections[gridstore[hold[0], hold[1]], 1]][1]).ToList();
+                            }
+                        }
+                        if(j<gridsize-1){
+                            hold = new List<int>{i,j+1};
+                            //Checks options based on tile from the east
+                            if(gridstore[hold[0],hold[1]]!=100){
+                                options = options.Intersect(connectClassify[connections[gridstore[hold[0], hold[1]], 3]][3]).ToList();
+                            }
+                        }
+                        if(bestop.Count>options.Count){
+                            bestop=options;
+                            coordinate=new int[2]{i,j};
+                        }
+                    }
+                }
+            }
+            Debug.Log("hehe");
+            if(gridstore[coordinate[0],coordinate[1]]==100){
+                Debug.Log("I got here");
+                if (bestop.Count > 0)
+                {
+                    Random rand = new Random();
+                    gridstore[coordinate[0], coordinate[1]] = bestop[rand.Next(bestop.Count() - 1)];
+                }
+                else{
+                    running=false;
+                }
+            }
+            if(checker==0){
+                running=false;
             }
         }
     }
@@ -190,35 +365,55 @@ public class GameManager : MonoBehaviour{
     }
 
     void Update() {
+        //Movement works through moving a goal object then sliding the tilemap towards it
         transform.position = Vector3.MoveTowards(transform.position, goal.position, speed*Time.deltaTime);
         if(Vector3.Distance(transform.position,goal.position) == 0f){
             if(Input.GetAxisRaw("Horizontal")!=0f){
                 if(Input.GetAxisRaw("Horizontal")==1f){
+                    //Moving right
                     if(MoveAllow(1,PlayerLocate())){
                         goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
+                        direction=1;
                     }
                 }
                 if(Input.GetAxisRaw("Horizontal")==-1f){
+                    //Moving left
                     if(MoveAllow(3,PlayerLocate())){
                         goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
+                        direction=3;
                     }
                 }
             }
             else if(Input.GetAxisRaw("Vertical")!=0f){
                 if(Input.GetAxisRaw("Vertical")==1f){
+                    //Moving up
                     if(MoveAllow(0,PlayerLocate())){
                         goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
+                        direction=0;
                     }
                 }
                 if(Input.GetAxisRaw("Vertical")==-1f){
+                    //Moving down
                     if(MoveAllow(2,PlayerLocate())){
                         goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
+                        direction=2;
                     }
                 }
             }
         }
+        //This will be the section for player interaction
         if (Input.GetKeyDown(KeyCode.E))
         {
+            switch(direction){
+                case 0:
+                    break;
+                case 1:
+                    break;
+                case 2:
+                    break;
+                case 3:
+                    break;
+            }
             //Interaction
         }
     }

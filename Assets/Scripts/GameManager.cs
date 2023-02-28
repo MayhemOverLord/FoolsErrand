@@ -84,14 +84,7 @@ public class GameManager : MonoBehaviour{
     new List<List<int>>{new List<int>{0,10,11,12,13,22,23,24,25,26,27,29,30},new List<int>{0,14,15,16,17,18,19,24,25,26,27,28,31},new List<int>{0,2,3,4,5,18,19,20,21,26,27,28,30},new List<int>{0,6,7,8,9,20,21,22,23,26,28,29,31}}, //Wall
     new List<List<int>>{new List<int>{1,5,32,33,36,5,32,33,36},new List<int>{1,9,33,34,37,9,33,34,37},new List<int>{1,13,34,35,38,13,34,35,38},new List<int>{1,17,32,35,39,17,32,35,39}}
     };
-    //Set of connections for more robust/square generation
-    public List<List<List<int>>> connectDepoint = new List<List<List<int>>>{
-    new List<List<int>>{new List<int>{1,5},new List<int>{1,9},new List<int>{1,13},new List<int>{1,17}}, //Empty
-    new List<List<int>>{new List<int>{17,19},new List<int>{5,21},new List<int>{9,23},new List<int>{13,25}}, //Left
-    new List<List<int>>{new List<int>{9,21},new List<int>{13,23},new List<int>{17,25},new List<int>{5,19}}, //Right
-    new List<List<int>>{new List<int>{4,7,8,14,16,18,20},new List<int>{2,4,8,11,12,20,22},new List<int>{12,22,24},new List<int>{3,4,10,12,16,18,24}}, //Both
-    new List<List<int>>{new List<int>{0,13,23,25},new List<int>{0,17,19,25},new List<int>{0,5,19,21},new List<int>{0,9,21,23}} //Wall
-    };
+    //Function for displaying the dungeon layout
     public void GridDisplay() {
         bool validgen = false;
         int counter = 0;
@@ -104,6 +97,7 @@ public class GameManager : MonoBehaviour{
             }
             counter = counter+1;
         }
+        DoorMaker();
         //Outputs the tile display
         tilemap.ClearAllTiles();
         for (int y=0;y<gridsize;y++){
@@ -119,6 +113,7 @@ public class GameManager : MonoBehaviour{
         direction = 0;
         PlayerLocate();
     }
+    //Initialises the dungeon layout storage with a valid base
     private void GridStart() //Sets the initial values for the dungeon tile grid
     {
         gridstore = new int[gridsize, gridsize];
@@ -137,6 +132,7 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+    //This function checks that the dungeon layout contains only valid tiles
     private bool GridCheck() //Checks whether the grid has been successfully created or lacks tiles.
     {
         for (int i = 0; i < gridsize; i++)
@@ -151,6 +147,7 @@ public class GameManager : MonoBehaviour{
         }
         return true;
     }
+    //This function finds the centre for each room
     private List<List<int>> RoomCentFinder() {
         List<List<int>> trcorners = new List<List<int>>();
         List<List<int>> blcorners = new List<List<int>>();
@@ -171,12 +168,12 @@ public class GameManager : MonoBehaviour{
             while (finding){
                 while (moveleft){
                     coordinate[1]=coordinate[1]-1;
-                    if(gridstore[coordinate[0],coordinate[1]]==19){
+                    if(gridstore[coordinate[0],coordinate[1]]==19 || gridstore[coordinate[0],coordinate[1]]==15 || gridstore[coordinate[0],coordinate[1]]==2){
                         moveleft=false;
                     }
                 }
                 coordinate[0]=coordinate[0]-1;
-                if(gridstore[coordinate[0],coordinate[1]]==25){
+                if(gridstore[coordinate[0],coordinate[1]]==25 || gridstore[coordinate[0],coordinate[1]]==7 || gridstore[coordinate[0],coordinate[1]]==10){
                     finding=false;
                     blcorners.Add(coordinate);
                 }
@@ -185,8 +182,398 @@ public class GameManager : MonoBehaviour{
         }
         return roomcents;
     }
+    private bool DoorHole(List<int> currloc, int direction){
+        switch(direction){
+            case 0:
+                switch(gridstore[currloc[0],currloc[1]]){
+                    case 0:
+                        gridstore[currloc[0],currloc[1]]=31;
+                        return true;
+                    case 2:
+                        gridstore[currloc[0],currloc[1]]=43;
+                        return true;
+                    case 3:
+                        gridstore[currloc[0],currloc[1]]=40;
+                        return true;
+                    case 4:
+                        gridstore[currloc[0],currloc[1]]=44;
+                        return true;
+                    case 5:
+                        gridstore[currloc[0],currloc[1]]=36;
+                        return true;
+                    case 18:
+                        gridstore[currloc[0],currloc[1]]=16;
+                        return true;
+                    case 19:
+                        gridstore[currloc[0],currloc[1]]=15;
+                        return true;
+                    case 20:
+                        gridstore[currloc[0],currloc[1]]=8;
+                        return true;
+                    case 21:
+                        gridstore[currloc[0],currloc[1]]=6;
+                        return true;
+                    case 30:
+                        gridstore[currloc[0],currloc[1]]=12;
+                        return true;
+                }
+                break;
+            case 1:
+                switch(gridstore[currloc[0],currloc[1]]){
+                    case 0:
+                        gridstore[currloc[0],currloc[1]]=30;
+                        return true;
+                    case 6:
+                        gridstore[currloc[0],currloc[1]]=40;
+                        return true;
+                    case 7:
+                        gridstore[currloc[0],currloc[1]]=41;
+                        return true;
+                    case 8:
+                        gridstore[currloc[0],currloc[1]]=44;
+                        return true;
+                    case 9:
+                        gridstore[currloc[0],currloc[1]]=37;
+                        return true;
+                    case 20:
+                        gridstore[currloc[0],currloc[1]]=4;
+                        return true;
+                    case 21:
+                        gridstore[currloc[0],currloc[1]]=3;
+                        return true;
+                    case 22:
+                        gridstore[currloc[0],currloc[1]]=12;
+                        return true;
+                    case 23:
+                        gridstore[currloc[0],currloc[1]]=10;
+                        return true;
+                    case 31:
+                        gridstore[currloc[0],currloc[1]]=16;
+                        return true;
+                }
+                break;
+            case 2:
+                switch(gridstore[currloc[0],currloc[1]]){
+                    case 0:
+                        gridstore[currloc[0],currloc[1]]=31;
+                        return true;
+                    case 10:
+                        gridstore[currloc[0],currloc[1]]=41;
+                        return true;
+                    case 11:
+                        gridstore[currloc[0],currloc[1]]=42;
+                        return true;
+                    case 12:
+                        gridstore[currloc[0],currloc[1]]=44;
+                        return true;
+                    case 13:
+                        gridstore[currloc[0],currloc[1]]=38;
+                        return true;
+                    case 22:
+                        gridstore[currloc[0],currloc[1]]=8;
+                        return true;
+                    case 23:
+                        gridstore[currloc[0],currloc[1]]=7;
+                        return true;
+                    case 24:
+                        gridstore[currloc[0],currloc[1]]=16;
+                        return true;
+                    case 25:
+                        gridstore[currloc[0],currloc[1]]=14;
+                        return true;
+                    case 30:
+                        gridstore[currloc[0],currloc[1]]=4;
+                        return true;
+                }
+                break;
+            case 3:
+                switch(gridstore[currloc[0],currloc[1]]){
+                    case 0:
+                        gridstore[currloc[0],currloc[1]]=30;
+                        return true;
+                    case 14:
+                        gridstore[currloc[0],currloc[1]]=42;
+                        return true;
+                    case 15:
+                        gridstore[currloc[0],currloc[1]]=43;
+                        return true;
+                    case 16:
+                        gridstore[currloc[0],currloc[1]]=44;
+                        return true;
+                    case 17:
+                        gridstore[currloc[0],currloc[1]]=39;
+                        return true;
+                    case 18:
+                        gridstore[currloc[0],currloc[1]]=4;
+                        return true;
+                    case 19:
+                        gridstore[currloc[0],currloc[1]]=2;
+                        return true;
+                    case 24:
+                        gridstore[currloc[0],currloc[1]]=12;
+                        return true;
+                    case 25:
+                        gridstore[currloc[0],currloc[1]]=11;
+                        return true;
+                    case 31:
+                        gridstore[currloc[0],currloc[1]]=8;
+                        return true;
+                }
+                break;
+        }
+        return false;
+    }
     private void DoorMaker(){
         List<List<int>> cents = RoomCentFinder();
+        List<List<int>> connects = Shortestroomfind(cents);
+        for (int i=0;i<connects.Count;i++){
+            //Debug.Log(connects.Count);
+            //Debug.Log("Set "+connects[i][0]+" - "+connects[i][1]);
+            if ((connects[i][0]!=connects[connects[i][1]][1]) || (connects[i][1]>connects[i][0])){
+                //Debug.Log("Valid");
+                List<int> difference = new List<int>{cents[connects[i][1]][0]-cents[connects[i][0]][0],cents[connects[i][1]][1]-cents[connects[i][0]][1]};
+                //While loop, reducing each coordinate of distance to 0 each loop while moving in the associated direction, reforming each tile as it moves.
+                List<int> currloc = new List<int>{cents[connects[i][0]][0],cents[connects[i][0]][1]};
+                bool hormoved = false;
+                bool vermoved = false;
+                bool updire = true;
+                bool rightdire = true;
+                bool vertlast = false;
+                if(difference[0]<0){
+                    updire=false;
+                }
+                if(difference[1]<0){
+                    rightdire=false;
+                }
+                while(!((currloc[0]==cents[connects[i][1]][0]) & (currloc[1]==cents[connects[i][1]][1]))){
+                    if (((Math.Abs(difference[0])<Math.Abs(difference[1])) & (difference[0]!=0))|| (difference[1]==0)){
+                        //Moving vertically
+                        if(hormoved){
+                            if (rightdire){
+                                DoorHole(currloc,3);
+                            }
+                            else{
+                                DoorHole(currloc,1);
+                            }
+                            hormoved=false;
+                        }
+                        if(!updire){
+                            //Moving down
+                            DoorHole(currloc,2);
+                            if(vermoved){
+                                vermoved = DoorHole(currloc,0);
+                            }
+                            vermoved=true;
+                            difference[0]=difference[0]+1;
+                            currloc[0]=currloc[0]-1;
+                        }
+                        else{
+                            //Moving up
+                            DoorHole(currloc,0);
+                            if(vermoved){
+                                vermoved = DoorHole(currloc,2);
+                            }
+                            vermoved=true;
+                            difference[0]=difference[0]-1;
+                            currloc[0]=currloc[0]+1;
+                        }
+                    }
+                    else{
+                        //Moving horizontally
+                        if(vermoved){
+                            if (updire){
+                                DoorHole(currloc,2);
+                            }
+                            else{
+                                DoorHole(currloc,0);
+                            }
+                            vermoved=false;
+                        }
+                        if(!rightdire){
+                            //Moving left
+                            DoorHole(currloc,3);
+                            if(hormoved){
+                                hormoved = DoorHole(currloc,1);
+                            }
+                            hormoved=true;
+                            difference[1]=difference[1]+1;
+                            currloc[1]=currloc[1]-1;
+                        }
+                        else{
+                            //Moving right
+                            DoorHole(currloc,1);
+                            if(hormoved){
+                                hormoved = DoorHole(currloc,3);
+                            }
+                            hormoved=true;
+                            difference[1]=difference[1]-1;
+                            currloc[1]=currloc[1]+1;
+                        }
+                    }
+                    if (!vertlast){
+                        if (difference[1]==0){
+                            if (difference[0]!=0){
+                                vertlast=true;
+                            }
+                        }
+                    }
+                }
+                if (vertlast){
+                    if(updire){
+                        DoorHole(currloc,2);
+                    }
+                    else{
+                        DoorHole(currloc,0);
+                    }
+                }
+                else{
+                    if(rightdire){
+                        DoorHole(currloc,3);
+                    }
+                    else{
+                        DoorHole(currloc,1);
+                    }
+                }
+            }
+        }
+        EdgeSmoother();
+    }
+    private void EdgeSmoother(){
+        for(int i = 1; i<gridsize-1;i++){
+            for(int j =1; j<gridsize -1; j++){
+                switch (gridstore[i,j]){
+                    case 4:
+                        if(connectClassify[4][3].Contains(gridstore[i,j-1])){
+                            gridstore[i,j]=18;
+                        }
+                        else{
+                            gridstore[i,j]=20;
+                        }
+                        break;
+                    case 8:
+                        if(connectClassify[4][2].Contains(gridstore[i-1,j])){
+                            gridstore[i,j]=22;
+                        }
+                        else{
+                            gridstore[i,j]=20;
+                        }
+                        break;
+                    case 12:
+                        if(connectClassify[4][3].Contains(gridstore[i,j-1])){
+                            gridstore[i,j]=24;
+                        }
+                        else{
+                            gridstore[i,j]=22;
+                        }
+                        break;
+                    case 16:
+                        if(connectClassify[4][2].Contains(gridstore[i-1,j])){
+                            gridstore[i,j]=24;
+                        }
+                        else{
+                            gridstore[i,j]=18;
+                        }
+                        break;
+                }
+            }
+        }
+    }
+    //This function finds the room closest to each room
+    private List<List<int>> Shortestroomfind(List<List<int>> cents){
+        List<List<int>> shortconnects = new List<List<int>>();
+        for(int i=0;i<cents.Count;i++){
+            int bestconnect=0;
+            int bestdist = Int32.MaxValue;
+            for(int j=0;j<cents.Count;j++){
+                if(i!=j){
+                    double dist = Math.Sqrt((cents[i][0]-cents[j][0])*(cents[i][0]-cents[j][0])+(cents[i][1]-cents[j][1])*(cents[i][1]-cents[j][1]));
+                    if(bestdist>dist){
+                        bestdist=(int)dist;
+                        bestconnect=j;
+                    }
+                }
+            }
+            shortconnects.Add(new List<int>{i,bestconnect});
+        }
+        for (int i=0;i<shortconnects.Count;i++){
+            Debug.Log(i+": "+shortconnects[i][0]+" - "+shortconnects[i][1]);
+        }
+        shortconnects=SecondConnects(shortconnects,cents);
+        return shortconnects;
+    }
+    private List<List<int>> SecondConnects(List<List<int>> shortconnects, List<List<int>> cents) {
+        List<int> connected = new List<int>{0};
+        List<int> notconnect = new List<int>();
+        for(int i=0;i<shortconnects.Count;i++){
+            bool delving = true;
+            int hold=i;
+            List<int> visited= new List<int>{};
+            while(delving){
+                for(int j = 0; j<shortconnects.Count;j++){
+                    if((shortconnects[j][0]==hold) & (!visited.Contains(j))){
+                        hold=j;
+                        visited.Add(j);
+                        break;
+                    }
+                }
+                if(connected.Contains(shortconnects[hold][1])){
+                    if(!connected.Contains(shortconnects[hold][0])){
+                        connected.Add(shortconnects[hold][0]);
+                    }
+                    else{
+                        delving=false;
+                    }
+                }
+                else{
+                    if(connected.Contains(shortconnects[hold][0])){
+                        connected.Add(shortconnects[hold][1]);
+                    }
+                    else{
+                        delving=false;
+                    }
+                }
+                hold=shortconnects[hold][1];
+            }
+        }
+        for(int i=0;i<cents.Count;i++){
+            if(!connected.Contains(i)){
+                notconnect.Add(i);
+            }
+        }
+        if(notconnect.Count!=0){
+            List<int> newconnect = new List<int>();
+            int bestdist=10000000;
+            double dist;
+            Debug.Log("Connect length: "+connected.Count);
+            Debug.Log("Not connect length: "+notconnect.Count);
+            for(int i=0;i<connected.Count;i++){
+                for(int j=0;j<notconnect.Count;j++){
+                    dist = Math.Sqrt((cents[connected[i]][0]-cents[notconnect[j]][0])*(cents[connected[i]][0]-cents[notconnect[j]][0])+(cents[connected[i]][1]-cents[notconnect[j]][1])*(cents[connected[i]][1]-cents[notconnect[j]][1]));
+                    if(dist<bestdist){
+                        bestdist=(int)dist;
+                        newconnect = new List<int> {notconnect[j],connected[i]};
+                        Debug.Log(newconnect[0]+" : "+newconnect[1]);
+                    }
+                }
+            }
+            connected.Add(newconnect[1]);
+            notconnect.Remove(newconnect[1]);
+            int keep=shortconnects.Count;
+            for(int i=0;i<shortconnects.Count;i++){
+                if(shortconnects[i][0]==newconnect[0]){
+                    keep=i;
+                }
+            }
+            shortconnects.Insert(keep,newconnect);
+            Debug.Log("Added: "+newconnect[0]+" - "+newconnect[1]);
+            for (int i=0;i<shortconnects.Count;i++){
+                Debug.Log(i+": "+shortconnects[i][0]+" - "+shortconnects[i][1]);
+            }
+            if(notconnect.Count!=0){
+                shortconnects=SecondConnects(shortconnects,cents);
+            }
+        }
+        return shortconnects;
     }
     private void GridGen() { //Function for the generation of the dungeon layout
         //Preparation of initial variables
@@ -271,7 +658,8 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
-    private void GridGen2() { //Function for the generation of the dungeon layout
+    //Flawed function, lowest entropy has the desire to naturally fill the area with block cells, when forcing rooms it will make minimum sized rooms
+    private void GridGenLowestEntropy() { //Function for the generation of the dungeon layout
         //Preparation of initial variables
         GridStart();
         Random rando = new Random();
@@ -334,9 +722,7 @@ public class GameManager : MonoBehaviour{
                     }
                 }
             }
-            Debug.Log("hehe");
             if(gridstore[coordinate[0],coordinate[1]]==100){
-                Debug.Log("I got here");
                 if (bestop.Count > 0)
                 {
                     Random rand = new Random();
@@ -351,12 +737,12 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
-    public int[] PlayerLocate() {
+    private int[] PlayerLocate() {
         int[] PlayerLocation = {(int)tilemap.transform.position[0]/-2, (int)tilemap.transform.position[1]/-2};
         return PlayerLocation;
     }
 
-    public bool MoveAllow(int direction, int[] location) {
+    private bool MoveAllow(int direction, int[] location) {
         return tilemove[direction, gridstore[location[1],location[0]]];
     }
 

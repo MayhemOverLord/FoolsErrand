@@ -15,11 +15,16 @@ public class GameManager : MonoBehaviour{
     public Tilemap tilemap;
     public float speed = 4;
     public int gridsize = 14;
+    public int enemycount = 4;
     public Transform goal;
     private int[,] gridstore;
-    public bool squaregen = false;
+    public bool squaregen = true;
     private int[] PlayerLocation = new int[2];
     private int direction;
+    private int depth = 0;
+    private List<List<int>> trcorners;
+    private List<List<int>> blcorners;
+    private int[] laddercord;
     private List<int> alltiles = new List<int>{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44};
     private List<int> squaretiles = new List<int>{0,1,5,9,13,17,19,21,23,25};
     private bool[,] tilemove = { //The set of data that checks whether a player can move in each direction
@@ -76,7 +81,7 @@ public class GameManager : MonoBehaviour{
         {3,3,3,3} //44 Q13
     };
     //Set of connections for more dynamic generation
-    public List<List<List<int>>> connectClassify = new List<List<List<int>>>{
+    private List<List<List<int>>> connectClassify = new List<List<List<int>>>{
     new List<List<int>>{new List<int>{1,5,32,33,36},new List<int>{1,9,33,34,37},new List<int>{1,13,34,35,38},new List<int>{1,17,32,35,39}}, //Empty
     new List<List<int>>{new List<int>{2,15,17,19,35,39,43},new List<int>{5,6,21,32,36,40},new List<int>{7,9,10,23,33,37,41},new List<int>{11,13,14,25,34,38,42}}, //Left
     new List<List<int>>{new List<int>{3,6,9,21,34,37,40},new List<int>{7,10,13,23,35,38,41},new List<int>{11,14,17,25,32,39,42},new List<int>{5,15,19,33,36,43}}, //Right
@@ -84,6 +89,14 @@ public class GameManager : MonoBehaviour{
     new List<List<int>>{new List<int>{0,10,11,12,13,22,23,24,25,26,27,29,30},new List<int>{0,14,15,16,17,18,19,24,25,26,27,28,31},new List<int>{0,2,3,4,5,18,19,20,21,26,27,28,30},new List<int>{0,6,7,8,9,20,21,22,23,26,28,29,31}}, //Wall
     new List<List<int>>{new List<int>{1,5,32,33,36,5,32,33,36},new List<int>{1,9,33,34,37,9,33,34,37},new List<int>{1,13,34,35,38,13,34,35,38},new List<int>{1,17,32,35,39,17,32,35,39}}
     };
+    public GameObject enemyprefab;
+    private List<GameObject> enemies;
+    public GameObject popupwindow;
+    public TextMeshProUGUI popuptext;
+    public GameObject popupops;
+    public GameObject descendops;
+    public GameObject battleops;
+    private bool popped=false;
     //Function for displaying the dungeon layout
     public void GridDisplay() {
         bool validgen = false;
@@ -98,20 +111,29 @@ public class GameManager : MonoBehaviour{
             counter = counter+1;
         }
         DoorMaker();
+        if(enemies!=null){
+            for (int i =enemies.Count-1;i>=0;i--){
+                Destroy(enemies[i].GetComponent<Character>().goal);
+                Destroy(enemies[i]);
+            }
+        }
+        enemies = new List<GameObject>();
         //Outputs the tile display
         tilemap.ClearAllTiles();
+        LadderMake();
         for (int y=0;y<gridsize;y++){
             for (int x=0;x<gridsize;x++){
                 tilemap.SetTile(new Vector3Int(x*2+1, y*2+1, 0), tiles[gridstore[y,x]]);
+                if (y==laddercord[0] & x == laddercord[1]){
+                    tilemap.SetTile(new Vector3Int(x*2+1, y*2+1, 0), tiles[45]);
+                }
             }
         }
-        //Sets player location to the centre of the screen
-        //transform.position = new Vector3Int(gridsize*-1,gridsize*-1, 0);
-        //goal.position = new Vector3Int(gridsize*-1,gridsize*-1, 0);
-        transform.position = new Vector3Int(-2,-2, 0);
-        goal.position = new Vector3Int(-2,-2, 0);
+        PlayerLocation = PlayerSpawn().ToArray();
+        transform.position = new Vector3Int(-2*PlayerLocation[1],-2*PlayerLocation[0], 0);
+        goal.position = new Vector3Int(-2*PlayerLocation[1],-2*PlayerLocation[0], 0);
         direction = 0;
-        PlayerLocate();
+        EnemySpawn();
     }
     //Initialises the dungeon layout storage with a valid base
     private void GridStart() //Sets the initial values for the dungeon tile grid
@@ -132,6 +154,118 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+    private void LadderMake(){
+        List<List<int>> Validtiles = new List<List<int>>();
+        for (int y=1; y<gridsize-1;y++){
+            for (int x=1; x<gridsize-1;x++){
+                if(gridstore[y,x]==1){
+                    Validtiles.Add(new List<int>{y,x});
+                }
+            }
+        }
+        Random rando = new Random();
+        int hold = rando.Next(0,Validtiles.Count-1);
+        laddercord = new int[2]{Validtiles[hold][0],Validtiles[hold][1]};
+    }
+    private int[] PlayerSpawn(){
+        List<List<int>> Validtiles = new List<List<int>>();
+        for (int i=1; i<gridsize-1;i++){
+            for (int j=1; j<gridsize-1;j++){
+                if (gridstore[i,j]!=0){
+                    Validtiles.Add(new List<int>{i,j});
+                }
+            }
+        }
+        Random rando = new Random();
+        int hold = rando.Next(0,Validtiles.Count-1);
+        return new int[2]{Validtiles[hold][0],Validtiles[hold][1]};
+    }
+    private void EnemySpawn(){
+        if(enemies.Count<enemycount){
+            List<int> rooms = new List<int>();
+            int playroom = RoomFinder(PlayerLocation);
+            for (int i=0;i<trcorners.Count;i++){
+                if (playroom!=i){
+                    rooms.Add(i);
+                }
+            }
+            int enemyroom = 0;
+            Random rando = new Random();
+            int [] enemylocate= new int[]{0,0};
+            bool finding=true;
+            int counter=0;
+            while(finding){
+                finding=false;
+                enemyroom = rooms[rando.Next(0,rooms.Count-1)];
+                enemylocate = new int[]{rando.Next(blcorners[enemyroom][1],trcorners[enemyroom][1]),rando.Next(blcorners[enemyroom][0],trcorners[enemyroom][0])};
+                for (int i=0;i<enemies.Count;i++){
+                    if((enemies[i].transform.position.x-tilemap.transform.position.x)/2==enemylocate[0] & (enemies[i].transform.position.y-tilemap.transform.position.y)/2==enemylocate[1]){
+                        finding=true;
+                    }
+                    if((enemies[i].transform.position.x-tilemap.transform.position.x)/2==PlayerLocation[1] & (enemies[i].transform.position.y-tilemap.transform.position.y)/2==PlayerLocation[0]){
+                        finding=true;
+                    }
+                }
+                counter=counter+1;
+                if(counter>=100000){
+                    finding=false;
+                }
+            }
+            enemies.Add(Instantiate(enemyprefab, new Vector3(0,0,0), Quaternion.identity));
+            enemies[enemies.Count-1].transform.SetParent(tilemap.transform);
+            enemies[enemies.Count-1].transform.position =  new Vector3(2*enemylocate[0]+tilemap.transform.position.x,2*enemylocate[1]+tilemap.transform.position.y,0);
+            EnemyStats(enemies[enemies.Count-1]);
+            enemies[enemies.Count-1].GetComponent<Character>().goal.transform.SetParent(tilemap.transform);
+            if(enemies.Count<enemycount){
+                EnemySpawn();
+            }
+        }
+    }
+    private void EnemyStats(GameObject enemy){
+        Random rando = new Random();
+        int monsternum=rando.Next(0,4);
+        string name="Enemy";
+        double[] stats = new double[6];
+        switch(monsternum){
+            //Bandit
+            case 0:
+                name = "Bandit";
+                stats = new double[6]{5+depth,5+depth,5+depth,5+depth,5+depth,5+depth};
+                break;
+            //Orc
+            case 1:
+                name = "Orc";
+                stats = new double[6]{10+depth*2,1+depth*0.2,6+depth*1.2,7+depth*1.4,2+depth*0.4,4+depth*0.8};
+                break;
+            //Goblin
+            case 2:
+                name = "Goblin";
+                stats = new double[6]{2+depth*0.4,10+depth*2,4+depth*0.8,4+depth*0.8,5+depth,5+depth};
+                break;
+            //Slime
+            case 3:
+                name = "Slime";
+                stats = new double[6]{4+depth*0.8,5+depth,6+depth*1.2,10+depth*2,2+depth*0.4,3+depth*0.6};
+                break;
+            //Golem
+            case 4:
+                name = "Golem";
+                stats = new double[6]{4+depth*0.8,3+depth*0.6,10+depth*2,10+depth*2,0,3+depth*0.6};
+                break;    
+        }
+        enemy.GetComponent<Character>().initCharacter(name,depth,(int)stats[0],(int)stats[1],(int)stats[2],(int)stats[3],(int)stats[4],(int)stats[5]);
+        //name, strength, agility, constitution, defence, intelligence, wisdom
+    }
+    private int RoomFinder(int[] location){
+        for (int i=0;i<trcorners.Count;i++){
+            if((location[1]<=trcorners[i][0]) & (location[0]<=trcorners[i][1])){
+                if((location[1]>=blcorners[i][0]) & (location[0]>=blcorners[i][1])){
+                    return i;
+                }
+            }
+        }
+        return trcorners.Count;
+    }
     //This function checks that the dungeon layout contains only valid tiles
     private bool GridCheck() //Checks whether the grid has been successfully created or lacks tiles.
     {
@@ -149,9 +283,10 @@ public class GameManager : MonoBehaviour{
     }
     //This function finds the centre for each room
     private List<List<int>> RoomCentFinder() {
-        List<List<int>> trcorners = new List<List<int>>();
-        List<List<int>> blcorners = new List<List<int>>();
+        trcorners = new List<List<int>>();
+        blcorners = new List<List<int>>();
         List<List<int>> roomcents = new List<List<int>>();
+        //Finds all the top right corners of rooms
         for (int i = 0; i < gridsize; i++)
         {
             for (int j = 0; j < gridsize; j++)
@@ -161,6 +296,7 @@ public class GameManager : MonoBehaviour{
                 }
             }
         }
+        //Traverses the walls of each room until the bottom left corner can be found
         for(int i = 0; i<trcorners.Count;i++){
             List<int> coordinate = new List<int>{trcorners[i][0],trcorners[i][1]};
             bool finding = true;
@@ -178,10 +314,12 @@ public class GameManager : MonoBehaviour{
                     blcorners.Add(coordinate);
                 }
             }
+            //Calculates the centre of each room
             roomcents.Add(new List<int>{((int)((trcorners[i][0]+blcorners[i][0])/2d)),((int)((trcorners[i][1]+blcorners[i][1])/2d))});
         }
         return roomcents;
     }
+    //Function for burrowing through walls to create new corridors
     private bool DoorHole(List<int> currloc, int direction){
         switch(direction){
             case 0:
@@ -327,12 +465,8 @@ public class GameManager : MonoBehaviour{
         List<List<int>> cents = RoomCentFinder();
         List<List<int>> connects = Shortestroomfind(cents);
         for (int i=0;i<connects.Count;i++){
-            //Debug.Log(connects.Count);
-            //Debug.Log("Set "+connects[i][0]+" - "+connects[i][1]);
             if ((connects[i][0]!=connects[connects[i][1]][1]) || (connects[i][1]>connects[i][0])){
-                //Debug.Log("Valid");
                 List<int> difference = new List<int>{cents[connects[i][1]][0]-cents[connects[i][0]][0],cents[connects[i][1]][1]-cents[connects[i][0]][1]};
-                //While loop, reducing each coordinate of distance to 0 each loop while moving in the associated direction, reforming each tile as it moves.
                 List<int> currloc = new List<int>{cents[connects[i][0]][0],cents[connects[i][0]][1]};
                 bool hormoved = false;
                 bool vermoved = false;
@@ -446,7 +580,7 @@ public class GameManager : MonoBehaviour{
                         if(connectClassify[4][3].Contains(gridstore[i,j-1])){
                             gridstore[i,j]=18;
                         }
-                        else{
+                        if(connectClassify[4][1].Contains(gridstore[i,j+1])){
                             gridstore[i,j]=20;
                         }
                         break;
@@ -454,7 +588,7 @@ public class GameManager : MonoBehaviour{
                         if(connectClassify[4][2].Contains(gridstore[i-1,j])){
                             gridstore[i,j]=22;
                         }
-                        else{
+                        if(connectClassify[4][0].Contains(gridstore[i+1,j])){
                             gridstore[i,j]=20;
                         }
                         break;
@@ -462,7 +596,7 @@ public class GameManager : MonoBehaviour{
                         if(connectClassify[4][3].Contains(gridstore[i,j-1])){
                             gridstore[i,j]=24;
                         }
-                        else{
+                        if(connectClassify[4][1].Contains(gridstore[i,j+1])){
                             gridstore[i,j]=22;
                         }
                         break;
@@ -470,8 +604,22 @@ public class GameManager : MonoBehaviour{
                         if(connectClassify[4][2].Contains(gridstore[i-1,j])){
                             gridstore[i,j]=24;
                         }
-                        else{
+                        if(connectClassify[4][0].Contains(gridstore[i+1,j])){
                             gridstore[i,j]=18;
+                        }
+                        break;
+                    case 44:
+                        if (connectClassify[4][0].Contains(gridstore[i+1,j])){
+                            gridstore[i,j]=4;
+                        }
+                        if (connectClassify[4][1].Contains(gridstore[i,j+1])){
+                            gridstore[i,j]=8;
+                        }
+                        if (connectClassify[4][2].Contains(gridstore[i-1,j])){
+                            gridstore[i,j]=12;
+                        }
+                        if (connectClassify[4][3].Contains(gridstore[i,j-1])){
+                            gridstore[i,j]=16;
                         }
                         break;
                 }
@@ -495,12 +643,10 @@ public class GameManager : MonoBehaviour{
             }
             shortconnects.Add(new List<int>{i,bestconnect});
         }
-        for (int i=0;i<shortconnects.Count;i++){
-            Debug.Log(i+": "+shortconnects[i][0]+" - "+shortconnects[i][1]);
-        }
         shortconnects=SecondConnects(shortconnects,cents);
         return shortconnects;
     }
+    //Connects any rooms that haven't previously been connected to the network
     private List<List<int>> SecondConnects(List<List<int>> shortconnects, List<List<int>> cents) {
         List<int> connected = new List<int>{0};
         List<int> notconnect = new List<int>();
@@ -544,15 +690,12 @@ public class GameManager : MonoBehaviour{
             List<int> newconnect = new List<int>();
             int bestdist=10000000;
             double dist;
-            Debug.Log("Connect length: "+connected.Count);
-            Debug.Log("Not connect length: "+notconnect.Count);
             for(int i=0;i<connected.Count;i++){
                 for(int j=0;j<notconnect.Count;j++){
                     dist = Math.Sqrt((cents[connected[i]][0]-cents[notconnect[j]][0])*(cents[connected[i]][0]-cents[notconnect[j]][0])+(cents[connected[i]][1]-cents[notconnect[j]][1])*(cents[connected[i]][1]-cents[notconnect[j]][1]));
                     if(dist<bestdist){
                         bestdist=(int)dist;
                         newconnect = new List<int> {notconnect[j],connected[i]};
-                        Debug.Log(newconnect[0]+" : "+newconnect[1]);
                     }
                 }
             }
@@ -565,9 +708,7 @@ public class GameManager : MonoBehaviour{
                 }
             }
             shortconnects.Insert(keep,newconnect);
-            Debug.Log("Added: "+newconnect[0]+" - "+newconnect[1]);
             for (int i=0;i<shortconnects.Count;i++){
-                Debug.Log(i+": "+shortconnects[i][0]+" - "+shortconnects[i][1]);
             }
             if(notconnect.Count!=0){
                 shortconnects=SecondConnects(shortconnects,cents);
@@ -737,6 +878,7 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+
     private int[] PlayerLocate() {
         int[] PlayerLocation = {(int)tilemap.transform.position[0]/-2, (int)tilemap.transform.position[1]/-2};
         return PlayerLocation;
@@ -745,44 +887,89 @@ public class GameManager : MonoBehaviour{
     private bool MoveAllow(int direction, int[] location) {
         return tilemove[direction, gridstore[location[1],location[0]]];
     }
+    //public GameObject popupwindow;
+    //public TextMeshProUGUI popuptext;
+    //public GameObject popupops;
+    //public GameObject descendops;
+    //public GameObject battleops;
+    private void LandOnLadder(){
+        int [] goallocate = new int[2]{(int)goal.position.x/-2,(int)goal.position.y/-2};
+        if(goallocate[1]==laddercord[0] & goallocate[0]==laddercord[1]){
+            popped=true;
+            popuptext.text="You have found a ladder down to the next layer! Would you like to descend?";
+            popupwindow.SetActive(true);
+            descendops.SetActive(true);
+            popupops.SetActive(false);
+            battleops.SetActive(false);
+        }
+    }
+
+    public void Descend(){
+        popupwindow.SetActive(false);
+        popped=false;
+        depth=depth+1;
+        GridDisplay();
+    }
+
+    public void NoDescend(){
+        popupwindow.SetActive(false);
+        popped=false;
+    }
+
+    private void EnemyMove(){
+
+    }
+    private void EnemyMoving(){
+        for (int i=0;i<enemies.Count;i++){
+            enemies[i].transform.position = Vector3.MoveTowards(enemies[i].transform.position, enemies[i].GetComponent<Character>().goal.transform.position, speed*Time.deltaTime);
+        }
+    }
 
     void Start() {
+        depth=0;
+        GridDisplay();
         goal.SetParent(null);
     }
 
     void Update() {
         //Movement works through moving a goal object then sliding the tilemap towards it
         transform.position = Vector3.MoveTowards(transform.position, goal.position, speed*Time.deltaTime);
-        if(Vector3.Distance(transform.position,goal.position) == 0f){
-            if(Input.GetAxisRaw("Horizontal")!=0f){
-                if(Input.GetAxisRaw("Horizontal")==1f){
-                    //Moving right
-                    if(MoveAllow(1,PlayerLocate())){
-                        goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
-                        direction=1;
+        if(!popped){
+            if(Vector3.Distance(transform.position,goal.position) == 0f){
+                if(Input.GetAxisRaw("Horizontal")!=0f){
+                    if(Input.GetAxisRaw("Horizontal")==1f){
+                        //Moving right
+                        if(MoveAllow(1,PlayerLocate())){
+                            goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
+                            direction=1;
+                            LandOnLadder();
+                        }
+                    }
+                    if(Input.GetAxisRaw("Horizontal")==-1f){
+                        //Moving left
+                        if(MoveAllow(3,PlayerLocate())){
+                            goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
+                            direction=3;
+                            LandOnLadder();
+                        }
                     }
                 }
-                if(Input.GetAxisRaw("Horizontal")==-1f){
-                    //Moving left
-                    if(MoveAllow(3,PlayerLocate())){
-                        goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
-                        direction=3;
+                else if(Input.GetAxisRaw("Vertical")!=0f){
+                    if(Input.GetAxisRaw("Vertical")==1f){
+                        //Moving up
+                        if(MoveAllow(0,PlayerLocate())){
+                            goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
+                            direction=0;
+                            LandOnLadder();
+                        }
                     }
-                }
-            }
-            else if(Input.GetAxisRaw("Vertical")!=0f){
-                if(Input.GetAxisRaw("Vertical")==1f){
-                    //Moving up
-                    if(MoveAllow(0,PlayerLocate())){
-                        goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
-                        direction=0;
-                    }
-                }
-                if(Input.GetAxisRaw("Vertical")==-1f){
-                    //Moving down
-                    if(MoveAllow(2,PlayerLocate())){
-                        goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
-                        direction=2;
+                    if(Input.GetAxisRaw("Vertical")==-1f){
+                        //Moving down
+                        if(MoveAllow(2,PlayerLocate())){
+                            goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
+                            direction=2;
+                            LandOnLadder();
+                        }
                     }
                 }
             }

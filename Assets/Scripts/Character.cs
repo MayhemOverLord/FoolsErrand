@@ -18,9 +18,10 @@ public class Character : MonoBehaviour {
     public int intelligence;
     public int wisdom;
     public int direction;
-    public Character(string nam, int str, int agi, int con, int def, int inte, int wis) {
+    public GameObject goal;
+    public void initCharacter(string nam, int lev, int str, int agi, int con, int def, int inte, int wis) {
         charname=nam;
-        level=1;
+        level=lev;
         experience=0;
         maxhealth = 10*con;
         currhealth = maxhealth;

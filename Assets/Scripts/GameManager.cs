@@ -916,14 +916,172 @@ public class GameManager : MonoBehaviour{
         popped=false;
     }
 
-    private void EnemyMove(){
-
+    private bool nearbyneighbour(int x, int y){
+        for(int i=0;i<enemies.Count;i++){
+            if ((enemies[i].GetComponent<Character>().goal.transform.position[0]-tilemap.transform.position.x)/2==x & (enemies[i].GetComponent<Character>().goal.transform.position[1]-tilemap.transform.position.y)/2==y){
+                return false;
+            }
+        }
+        return true;
     }
-    private void EnemyMoving(){
-        for (int i=0;i<enemies.Count;i++){
-            enemies[i].transform.position = Vector3.MoveTowards(enemies[i].transform.position, enemies[i].GetComponent<Character>().goal.transform.position, speed*Time.deltaTime);
+    private bool direqueuecheck(List<List<int>> queue,int increment){
+        bool checking=true;
+        for(int i=0;i<queue.Count;i++){
+            if((queue[i][0]==queue[increment][0]) & (queue[i][1]==queue[increment][1]) & (i!=increment)){
+                checking=false;
+            }
+        }
+        return checking;
+    }
+
+    private int direchoose(int[] enemy, int[] player){
+        List<List<int>> queue = new List<List<int>> {new List<int>{enemy[0],enemy[1],4}};
+        int[] goalcords = new int[2] { (int)goal.position.x/-2, (int)goal.position.y/-2};
+        bool searching = true;
+        int increment = 0;
+        while (searching){
+            if ((goalcords[0] == queue[increment][0]) & (goalcords[1] == queue[increment][1]))
+            {
+                searching = false;
+                return queue[increment][2];
+            }
+            //CHECKING NORTH
+            if (MoveAllow(0, new int[2] {queue[increment][0], queue[increment][1]})){
+                if(direqueuecheck(queue,increment)){
+                    if(increment == 0)
+                    {
+                        queue.Add(new List<int>{queue[increment][0], queue[increment][1] + 1, 0});
+                    }
+                    else
+                    {
+                        queue.Add(new List<int>{queue[increment][0], queue[increment][1] + 1, queue[increment][2]});
+                    }
+                }
+            }
+            //CHECKING EAST
+            if (MoveAllow(1, new int[2] {queue[increment][0], queue[increment][1] }))
+            {
+                if(direqueuecheck(queue,increment)){
+                    if (increment == 0)
+                    {
+                        queue.Add(new List<int>{queue[increment][0]+1, queue[increment][1], 1});
+                    }
+                    else
+                    {
+                        queue.Add(new List<int>{queue[increment][0]+1, queue[increment][1], queue[increment][2]});
+                    }
+                }
+            }
+            //CHECKING SOUTH
+            if (MoveAllow(2, new int[2] {queue[increment][0], queue[increment][1] }))
+            {
+                if(direqueuecheck(queue,increment)){
+                    if (increment == 0)
+                    {
+                        queue.Add(new List<int>{queue[increment][0], queue[increment][1] - 1, 2});
+                    }
+                    else
+                    {
+                        queue.Add(new List<int>{queue[increment][0], queue[increment][1] - 1, queue[increment][2]});
+                    }
+                }
+            }
+            //CHECKING WEST
+            if (MoveAllow(3, new int[2] {queue[increment][0], queue[increment][1] }))
+            {
+                if(direqueuecheck(queue,increment)){
+                    if (increment == 0)
+                    {
+                        queue.Add(new List<int>{queue[increment][0]-1, queue[increment][1], 3});
+                    }
+                    else
+                    {
+                        queue.Add(new List<int>{queue[increment][0]-1, queue[increment][1], queue[increment][2]});
+                    }
+                }
+            }
+            increment = increment + 1;
+            if(increment>=queue.Count){
+                searching=false;
+            }
+        }
+        return 5;
+    }
+
+    private void EnemyMove(){
+        if(enemies!=null){
+            Random rando = new Random();
+            for (int i=0;i<enemies.Count;i++){
+                List<int> direoptions = new List<int>();
+                int[] enemylocation = new int[2]{(int)(enemies[i].transform.position.x-tilemap.transform.position.x)/2,(int)(enemies[i].transform.position.y-tilemap.transform.position.y)/2};
+                int[] playerlocation = PlayerLocate();
+                int dire = 0;
+                if (Math.Sqrt((playerlocation[0] - enemylocation[0]) * (playerlocation[0] - enemylocation[0]) + (playerlocation[1] - enemylocation[1]) * (playerlocation[1] - enemylocation[1])) <= 5)
+                {
+                    dire=direchoose(enemylocation, playerlocation);
+                    Debug.Log(dire);
+                }
+                else
+                {
+                    if (MoveAllow(0, enemylocation))
+                    {
+                        direoptions.Add(0);
+                    }
+                    if (MoveAllow(1, enemylocation))
+                    {
+                        direoptions.Add(1);
+                    }
+                    if (MoveAllow(2, enemylocation))
+                    {
+                        direoptions.Add(2);
+                    }
+                    if (MoveAllow(3, enemylocation))
+                    {
+                        direoptions.Add(3);
+                    }
+                    dire = direoptions[rando.Next(0, direoptions.Count)];
+                }
+                switch(dire){
+                    case 0:
+                        if(nearbyneighbour(enemylocation[0],enemylocation[1]+1)){
+                            enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(0f, speed*-0.5f, 0f);
+                        }
+                        break;
+                    case 1:
+                        if(nearbyneighbour(enemylocation[0]+1,enemylocation[1])){
+                            enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(speed*-0.5f, 0f, 0f);
+                        }
+                        break;
+                    case 2:
+                        if(nearbyneighbour(enemylocation[0],enemylocation[1]-1)){
+                            enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(0f, speed*0.5f, 0f);
+                        }
+                        break;
+                    case 3:
+                        if(nearbyneighbour(enemylocation[0]-1,enemylocation[1])){
+                            enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(speed*0.5f, 0f, 0f);
+                        }
+                        break;
+                    case 4:
+                        //RUN CODE HERE FOR INITIALISING COMBAT
+                        break;
+                    case 5:
+                        //Nothing happens here, it can't get to the player
+                        break;
+                }
+            }
         }
     }
+    
+    private void EnemyMoving(){
+        if(enemies!=null){
+            for (int i=0;i<enemies.Count;i++){
+                enemies[i].transform.position = Vector3.MoveTowards(enemies[i].transform.position, enemies[i].GetComponent<Character>().goal.transform.position, speed*Time.deltaTime);
+            }
+        }
+    }
+
+    //public void CombatStart(){}
 
     void Start() {
         depth=0;
@@ -934,6 +1092,7 @@ public class GameManager : MonoBehaviour{
     void Update() {
         //Movement works through moving a goal object then sliding the tilemap towards it
         transform.position = Vector3.MoveTowards(transform.position, goal.position, speed*Time.deltaTime);
+        EnemyMoving();
         if(!popped){
             if(Vector3.Distance(transform.position,goal.position) == 0f){
                 if(Input.GetAxisRaw("Horizontal")!=0f){
@@ -942,6 +1101,7 @@ public class GameManager : MonoBehaviour{
                         if(MoveAllow(1,PlayerLocate())){
                             goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
                             direction=1;
+                            EnemyMove();
                             LandOnLadder();
                         }
                     }
@@ -950,6 +1110,7 @@ public class GameManager : MonoBehaviour{
                         if(MoveAllow(3,PlayerLocate())){
                             goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
                             direction=3;
+                            EnemyMove();
                             LandOnLadder();
                         }
                     }
@@ -960,6 +1121,7 @@ public class GameManager : MonoBehaviour{
                         if(MoveAllow(0,PlayerLocate())){
                             goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
                             direction=0;
+                            EnemyMove();
                             LandOnLadder();
                         }
                     }
@@ -968,6 +1130,7 @@ public class GameManager : MonoBehaviour{
                         if(MoveAllow(2,PlayerLocate())){
                             goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
                             direction=2;
+                            EnemyMove();
                             LandOnLadder();
                         }
                     }

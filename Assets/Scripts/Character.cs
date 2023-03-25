@@ -18,8 +18,11 @@ public class Character : MonoBehaviour {
     public int intelligence;
     public int wisdom;
     public int direction;
+    public int spriteoffset;
+    public List<string> statuses;
     public GameObject goal;
-    public void initCharacter(string nam, int lev, int str, int agi, int con, int def, int inte, int wis) {
+    public Sprite[] images;
+    public void initCharacter(string nam, int lev, int str, int agi, int con, int def, int inte, int wis, int offset) {
         charname=nam;
         level=lev;
         experience=0;
@@ -33,6 +36,10 @@ public class Character : MonoBehaviour {
         defence=def;
         intelligence=inte;
         wisdom=wis;
+        statuses= new List<string>();
+        spriteoffset=offset;
+        ChangeDirection(0);
+        gameObject.GetComponent<SpriteRenderer>().sprite=images[spriteoffset];
     }
     public int ChangeStat(string stat, int change) {
         switch(stat){
@@ -44,6 +51,8 @@ public class Character : MonoBehaviour {
                 return agility;
             case "con":
                 constitution=constitution+change;
+                currhealth=currhealth+change*10;
+                maxhealth=maxhealth+change*10;
                 return constitution;
             case "def":
                 defence=defence+change;
@@ -53,6 +62,8 @@ public class Character : MonoBehaviour {
                 return intelligence;
             case "wis":
                 wisdom=wisdom+change;
+                currmana=currmana+change*5;
+                maxmana=maxmana+change*5;
                 return wisdom;           
         }
         return 9999999;
@@ -65,6 +76,9 @@ public class Character : MonoBehaviour {
             currhealth=currhealth+value;
         }
         return currhealth;
+    }
+    public void ChangeDirection(int dire){
+        direction=dire;
     }
     public int Harm(int value) {
         if (currhealth-value<0){

@@ -11,7 +11,7 @@ public class MainMenu : MonoBehaviour {
     public GameObject NameMenuPanel;
     public GameObject IntroPanel;
     public GameObject NameButton;
-    public string username;
+    static public string username;
 
     public void NewGame() {
         MainMenuPanel.SetActive(false);
@@ -29,11 +29,14 @@ public class MainMenu : MonoBehaviour {
     public void NameConfirm() {
         username = nametext.text;
         Debug.Log(username);
+        IntroPanel.SetActive(true);
+    }
+    public void StoryRead(){
         SceneManager.LoadScene("GamePlay");
     }
 
     public void NameInput() {
-        if(nametext.text.Length<3){
+        if(nametext.text.Length<2){
             NameButton.SetActive(false);
         }
         else{

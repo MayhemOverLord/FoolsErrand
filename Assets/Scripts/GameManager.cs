@@ -6,11 +6,13 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.Tilemaps;
+using UnityEngine.UI;
 using TMPro;
 using Random = System.Random;
 
 public class GameManager : MonoBehaviour{
-    public Character Player;
+    public Canvas canvas;
+    public GameObject Player;
     public Tile[] tiles;
     public Tilemap tilemap;
     public float speed = 4;
@@ -22,6 +24,8 @@ public class GameManager : MonoBehaviour{
     private int[] PlayerLocation = new int[2];
     private int direction;
     private int depth = 0;
+    private int wins = 0;
+    private int bosslevel=10;
     private List<List<int>> trcorners;
     private List<List<int>> blcorners;
     private int[] laddercord;
@@ -93,34 +97,97 @@ public class GameManager : MonoBehaviour{
     private List<GameObject> enemies;
     public GameObject popupwindow;
     public TextMeshProUGUI popuptext;
+    public GameObject nextdiabutton;
+    public TextMeshProUGUI nextdiatext;
     public GameObject popupops;
     public GameObject descendops;
     public GameObject battleops;
     private bool popped=false;
+    private GameObject combatenemy;
+    private int combatenemyindex;
+    public GameObject playericon;
+    public GameObject enemyicon;
+    public GameObject combatscreen;
+    public GameObject combatoptions;
+    public GameObject combatspells;
+    public GameObject combattextpanel;
+    public TextMeshProUGUI combattext;
+    public TextMeshProUGUI playername;
+    public TextMeshProUGUI enemyname;
+    public TextMeshProUGUI playerhealth;
+    public TextMeshProUGUI enemyhealth;
+    public GameObject playerhealthbar;
+    public GameObject enemyhealthbar;
+    private List<int> turnqueue;
+    private int turns;
+    private bool playerfirst;
+    private int currentturn;
+    private bool fled=false;
+    private int expgained=0;
+    public int statpoints=0;
+
+    public TextMeshProUGUI exptext;
+    public GameObject exppanel;
+    public GameObject strpanel;
+    public TextMeshProUGUI strtext;
+    public GameObject agipanel;
+    public TextMeshProUGUI agitext;
+    public GameObject conpanel;
+    public TextMeshProUGUI context;
+    public GameObject defpanel;
+    public TextMeshProUGUI deftext;
+    public GameObject intpanel;
+    public TextMeshProUGUI inttext;
+    public GameObject wispanel;
+    public TextMeshProUGUI wistext;
+    public GameObject donebutton;
+
+    public GameObject NPCprefab;
+    public List<GameObject> NPCs;
+    private bool bossfight;
+    private int interactindex;
+    public GameObject gameoverpanel;
+    public TextMeshProUGUI gameovertext;
+    
     //Function for displaying the dungeon layout
     public void GridDisplay() {
+        bool normgen=!(depth==0 || depth==bosslevel);
         bool validgen = false;
         int counter = 0;
-        while (!validgen) //Runs grid generation until a valid grid has been generated
-        {
-            GridGen();
-            validgen = GridCheck();
-            if(counter>=10000){
-                break;
-            }
-            counter = counter+1;
-        }
-        DoorMaker();
         if(enemies!=null){
             for (int i =enemies.Count-1;i>=0;i--){
                 Destroy(enemies[i].GetComponent<Character>().goal);
                 Destroy(enemies[i]);
             }
         }
+        if(NPCs!=null){
+            for (int i =NPCs.Count-1;i>=0;i--){
+                Destroy(NPCs[i].GetComponent<Character>().goal);
+                Destroy(NPCs[i]);
+            }
+        }
+        NPCs = new List<GameObject>();
         enemies = new List<GameObject>();
+        if(normgen){
+            while (!validgen) //Runs grid generation until a valid grid has been generated
+            {
+                GridGen();
+                validgen = GridCheck();
+                if(counter>=10000){
+                    break;
+                }
+                counter = counter+1;
+            }
+            DoorMaker();
+            PlayerLocation = PlayerSpawn().ToArray();
+            LadderMake();
+            EnemySpawn();
+        }
+        else{
+            GridDetermined();
+        }
         //Outputs the tile display
         tilemap.ClearAllTiles();
-        LadderMake();
         for (int y=0;y<gridsize;y++){
             for (int x=0;x<gridsize;x++){
                 tilemap.SetTile(new Vector3Int(x*2+1, y*2+1, 0), tiles[gridstore[y,x]]);
@@ -129,11 +196,110 @@ public class GameManager : MonoBehaviour{
                 }
             }
         }
-        PlayerLocation = PlayerSpawn().ToArray();
         transform.position = new Vector3Int(-2*PlayerLocation[1],-2*PlayerLocation[0], 0);
         goal.position = new Vector3Int(-2*PlayerLocation[1],-2*PlayerLocation[0], 0);
         direction = 0;
-        EnemySpawn();
+    }
+    private void GridDetermined(){
+        //Starting Room
+        GridTut();
+        if(depth==0){
+            GridTut();
+            PlayerLocation=new int[2]{0,2};
+            laddercord = new int[2]{2,7};
+            NPCs.Add(Instantiate(NPCprefab, new Vector3(0,0,0), Quaternion.identity));
+            NPCs[NPCs.Count-1].transform.SetParent(tilemap.transform);
+            NPCs[NPCs.Count-1].transform.position =  new Vector3(2*2+tilemap.transform.position.x,2*4+tilemap.transform.position.y,-1);
+            NPCs[NPCs.Count-1].GetComponent<Character>().initCharacter("Guide",100,1000,1000,1000,1000,1000,1000,1);
+            NPCs[NPCs.Count-1].GetComponent<NPC>().initNPC(new List<string>{"Guide: Welcome to the dungeon, this is where the villain is hiding",
+            "Guide: I've heard that the villain is hiding on layer "+bosslevel+"!",
+            "Guide: You can descend down the ladder to reach new levels of the dungeon,",
+            "Guide: Be careful though, there are monsters that grow stronger the deeper you go.",
+            "Guide: I wish you luck, the kingdom depends on you!"
+            },"Exit","NPC", new int[2]{2,4});
+        }
+        //Boss Room
+        else{
+            GridBoss();
+            PlayerLocation=new int[2]{0,4};
+            laddercord = new int[2]{gridsize,gridsize};
+            NPCs.Add(Instantiate(NPCprefab, new Vector3(0,0,0), Quaternion.identity));
+            NPCs[NPCs.Count-1].transform.SetParent(tilemap.transform);
+            NPCs[NPCs.Count-1].transform.position =  new Vector3(2*4+tilemap.transform.position.x,2*4+tilemap.transform.position.y,0);
+            EnemyStats(NPCs[NPCs.Count-1],true);
+            NPCs[NPCs.Count-1].GetComponent<NPC>().initNPC(new List<string>{"BOSS FIGHT TIME TINY HUMAN"},"Fight","BOSS", new int[2]{4,4});
+            NPCs[NPCs.Count-1].transform.localScale *= 3;
+            NPCs[NPCs.Count-1].GetComponent<Character>().goal.transform.SetParent(tilemap.transform);
+        }
+    }
+    private void GridTut()
+    {
+        gridstore = new int[gridsize, gridsize];
+        for (int i = 0; i < gridsize; i++)
+        {
+            List<int> hold = new List<int>();
+            switch(i){
+                case 0:
+                    hold = new List<int>{25,13,13,13,23,0,0,0,0};
+                    break;
+                case 1:
+                    hold = new List<int>{17,1,1,1,9,0,25,13,23};
+                    break;
+                case 2:
+                    hold = new List<int>{17,1,1,1,9,0,17,1,9};
+                    break;
+                case 3:
+                    hold = new List<int>{17,1,1,1,37,30,39,1,9};
+                    break;
+                case 4:
+                    hold = new List<int>{19,5,5,5,21,0,19,5,21};
+                    break;
+            }
+            for (int j = hold.Count-1; j < gridsize; j++)
+            {
+                hold.Add(0);
+            }
+            for (int j = 0; j < gridsize; j++)
+            {
+                gridstore[i,j] = hold[j]; //Solid tiles
+            }
+        }
+    }
+    private void GridBoss()
+    {
+        gridstore = new int[gridsize, gridsize];
+        for (int i = 0; i < gridsize; i++)
+        {
+            List<int> hold = new List<int>();
+            switch(i){
+                case 0:
+                    hold = new List<int>{25,13,13,13,13,13,13,13,23};
+                    break;
+                case 1:
+                    hold = new List<int>{19,32,1,1,1,1,1,33,21};
+                    break;
+                case 2:
+                    hold = new List<int>{0,19,32,1,1,1,33,21,0};
+                    break;
+                case 3:
+                    hold = new List<int>{0,0,19,32,1,33,21,0,0};
+                    break;
+                case 4:
+                    hold = new List<int>{0,0,0,17,1,9,0,0,0};
+                    break;
+                case 5:
+                    hold = new List<int>{0,0,0,19,5,21,0,0,0};
+                    break;
+            }
+            for (int j = hold.Count-1; j < gridsize; j++)
+            {
+                hold.Add(0);
+            }
+            for (int j = 0; j < gridsize; j++)
+            {
+                gridstore[i,j] = hold[j]; //Solid tiles
+            }
+        }
     }
     //Initialises the dungeon layout storage with a valid base
     private void GridStart() //Sets the initial values for the dungeon tile grid
@@ -143,7 +309,7 @@ public class GameManager : MonoBehaviour{
         {
             for (int j = 0; j < gridsize; j++)
             {
-                if ((i <= 0) || (j <= 0) || (i >= gridsize - 1) || (j >= gridsize - 1))
+                if ((i <= 0) | (j <= 0) | (i >= gridsize - 1) | (j >= gridsize - 1))
                 {
                     gridstore[i, j] = 0; //Solid tiles
                 }
@@ -155,10 +321,11 @@ public class GameManager : MonoBehaviour{
         }
     }
     private void LadderMake(){
+        int[] playerlocation = PlayerLocate();
         List<List<int>> Validtiles = new List<List<int>>();
         for (int y=1; y<gridsize-1;y++){
             for (int x=1; x<gridsize-1;x++){
-                if(gridstore[y,x]==1){
+                if(gridstore[y,x]==1 & !(playerlocation[0]==x & playerlocation[1]==y)){
                     Validtiles.Add(new List<int>{y,x});
                 }
             }
@@ -180,29 +347,31 @@ public class GameManager : MonoBehaviour{
         int hold = rando.Next(0,Validtiles.Count-1);
         return new int[2]{Validtiles[hold][0],Validtiles[hold][1]};
     }
-    private void EnemySpawn(){
-        if(enemies.Count<enemycount){
-            List<int> rooms = new List<int>();
-            int playroom = RoomFinder(PlayerLocation);
-            for (int i=0;i<trcorners.Count;i++){
-                if (playroom!=i){
-                    rooms.Add(i);
+    private int[] EnemyValid(){
+        int[] playerlocation = PlayerLocate();
+        List<List<int>> Validtiles = new List<List<int>>();
+        for (int y=1; y<gridsize-1;y++){
+            for (int x=1; x<gridsize-1;x++){
+                if(gridstore[y,x]!=0 & ((playerlocation[0]-6>x | playerlocation[0]+6<x) | (playerlocation[1]+2<y | playerlocation[1]-2>y))){
+                    Validtiles.Add(new List<int>{y,x});
                 }
             }
-            int enemyroom = 0;
+        }
+        Random rando = new Random();
+        int hold = rando.Next(0,Validtiles.Count-1);
+        return new int[2]{Validtiles[hold][1],Validtiles[hold][0]};
+    }
+    private void EnemySpawn(){
+        if(enemies.Count<enemycount){
             Random rando = new Random();
             int [] enemylocate= new int[]{0,0};
             bool finding=true;
             int counter=0;
             while(finding){
                 finding=false;
-                enemyroom = rooms[rando.Next(0,rooms.Count-1)];
-                enemylocate = new int[]{rando.Next(blcorners[enemyroom][1],trcorners[enemyroom][1]),rando.Next(blcorners[enemyroom][0],trcorners[enemyroom][0])};
+                enemylocate = EnemyValid();
                 for (int i=0;i<enemies.Count;i++){
                     if((enemies[i].transform.position.x-tilemap.transform.position.x)/2==enemylocate[0] & (enemies[i].transform.position.y-tilemap.transform.position.y)/2==enemylocate[1]){
-                        finding=true;
-                    }
-                    if((enemies[i].transform.position.x-tilemap.transform.position.x)/2==PlayerLocation[1] & (enemies[i].transform.position.y-tilemap.transform.position.y)/2==PlayerLocation[0]){
                         finding=true;
                     }
                 }
@@ -214,47 +383,51 @@ public class GameManager : MonoBehaviour{
             enemies.Add(Instantiate(enemyprefab, new Vector3(0,0,0), Quaternion.identity));
             enemies[enemies.Count-1].transform.SetParent(tilemap.transform);
             enemies[enemies.Count-1].transform.position =  new Vector3(2*enemylocate[0]+tilemap.transform.position.x,2*enemylocate[1]+tilemap.transform.position.y,0);
-            EnemyStats(enemies[enemies.Count-1]);
+            EnemyStats(enemies[enemies.Count-1],false);
             enemies[enemies.Count-1].GetComponent<Character>().goal.transform.SetParent(tilemap.transform);
             if(enemies.Count<enemycount){
                 EnemySpawn();
             }
         }
     }
-    private void EnemyStats(GameObject enemy){
+    private void EnemyStats(GameObject enemy, bool boss){
         Random rando = new Random();
-        int monsternum=rando.Next(0,4);
+        int monsternum=rando.Next(0,5);
         string name="Enemy";
         double[] stats = new double[6];
+        double modifier = (depth+wins*bosslevel);
+        if(boss){
+            modifier=modifier*1.2;
+        }
         switch(monsternum){
             //Bandit
             case 0:
                 name = "Bandit";
-                stats = new double[6]{5+depth,5+depth,5+depth,5+depth,5+depth,5+depth};
+                stats = new double[7]{5+modifier,5+modifier,5+modifier,5+modifier,5+modifier,5+modifier,2};
                 break;
             //Orc
             case 1:
                 name = "Orc";
-                stats = new double[6]{10+depth*2,1+depth*0.2,6+depth*1.2,7+depth*1.4,2+depth*0.4,4+depth*0.8};
+                stats = new double[7]{10+modifier*2,1+modifier*0.2,6+modifier*1.2,7+modifier*1.4,2+modifier*0.4,4+modifier*0.8,3};
                 break;
             //Goblin
             case 2:
                 name = "Goblin";
-                stats = new double[6]{2+depth*0.4,10+depth*2,4+depth*0.8,4+depth*0.8,5+depth,5+depth};
+                stats = new double[7]{2+modifier*0.4,10+modifier*2,4+modifier*0.8,4+modifier*0.8,5+modifier,5+modifier,4};
                 break;
             //Slime
             case 3:
                 name = "Slime";
-                stats = new double[6]{4+depth*0.8,5+depth,6+depth*1.2,10+depth*2,2+depth*0.4,3+depth*0.6};
+                stats = new double[7]{4+modifier*0.8,5+modifier,6+modifier*1.2,10+modifier*2,2+modifier*0.4,3+modifier*0.6,5};
                 break;
             //Golem
             case 4:
                 name = "Golem";
-                stats = new double[6]{4+depth*0.8,3+depth*0.6,10+depth*2,10+depth*2,0,3+depth*0.6};
+                stats = new double[7]{4+modifier*0.8,3+modifier*0.6,10+modifier*2,10+modifier*2,0,3+modifier*0.6,6};
                 break;    
         }
-        enemy.GetComponent<Character>().initCharacter(name,depth,(int)stats[0],(int)stats[1],(int)stats[2],(int)stats[3],(int)stats[4],(int)stats[5]);
-        //name, strength, agility, constitution, defence, intelligence, wisdom
+        enemy.GetComponent<Character>().initCharacter(name,depth,(int)stats[0],(int)stats[1],(int)stats[2],(int)stats[3],(int)stats[4],(int)stats[5],(int)stats[6]);
+        //name, strength, agility, constitution, defence, intelligence, wisdom, spriteoffset
     }
     private int RoomFinder(int[] location){
         for (int i=0;i<trcorners.Count;i++){
@@ -304,12 +477,12 @@ public class GameManager : MonoBehaviour{
             while (finding){
                 while (moveleft){
                     coordinate[1]=coordinate[1]-1;
-                    if(gridstore[coordinate[0],coordinate[1]]==19 || gridstore[coordinate[0],coordinate[1]]==15 || gridstore[coordinate[0],coordinate[1]]==2){
+                    if(gridstore[coordinate[0],coordinate[1]]==19 | gridstore[coordinate[0],coordinate[1]]==15 | gridstore[coordinate[0],coordinate[1]]==2){
                         moveleft=false;
                     }
                 }
                 coordinate[0]=coordinate[0]-1;
-                if(gridstore[coordinate[0],coordinate[1]]==25 || gridstore[coordinate[0],coordinate[1]]==7 || gridstore[coordinate[0],coordinate[1]]==10){
+                if(gridstore[coordinate[0],coordinate[1]]==25 | gridstore[coordinate[0],coordinate[1]]==7 | gridstore[coordinate[0],coordinate[1]]==10){
                     finding=false;
                     blcorners.Add(coordinate);
                 }
@@ -465,7 +638,7 @@ public class GameManager : MonoBehaviour{
         List<List<int>> cents = RoomCentFinder();
         List<List<int>> connects = Shortestroomfind(cents);
         for (int i=0;i<connects.Count;i++){
-            if ((connects[i][0]!=connects[connects[i][1]][1]) || (connects[i][1]>connects[i][0])){
+            if ((connects[i][0]!=connects[connects[i][1]][1]) | (connects[i][1]>connects[i][0])){
                 List<int> difference = new List<int>{cents[connects[i][1]][0]-cents[connects[i][0]][0],cents[connects[i][1]][1]-cents[connects[i][0]][1]};
                 List<int> currloc = new List<int>{cents[connects[i][0]][0],cents[connects[i][0]][1]};
                 bool hormoved = false;
@@ -480,7 +653,7 @@ public class GameManager : MonoBehaviour{
                     rightdire=false;
                 }
                 while(!((currloc[0]==cents[connects[i][1]][0]) & (currloc[1]==cents[connects[i][1]][1]))){
-                    if (((Math.Abs(difference[0])<Math.Abs(difference[1])) & (difference[0]!=0))|| (difference[1]==0)){
+                    if (((Math.Abs(difference[0])<Math.Abs(difference[1])) & (difference[0]!=0))| (difference[1]==0)){
                         //Moving vertically
                         if(hormoved){
                             if (rightdire){
@@ -885,7 +1058,34 @@ public class GameManager : MonoBehaviour{
     }
 
     private bool MoveAllow(int direction, int[] location) {
-        return tilemove[direction, gridstore[location[1],location[0]]];
+        int[] coord=new int[2]{location[0],location[1]};
+        switch(direction){
+            case 0:
+                coord[1]=location[1]+1;
+                break;
+            case 1:
+                coord[0]=location[0]+1;
+                break;
+            case 2:
+                coord[1]=location[1]-1;
+                break;
+            case 3:
+                coord[0]=location[0]-1;
+                break;
+        }
+        bool movevalid = tilemove[direction, gridstore[location[1],location[0]]];
+        bool touchedinter = false;
+        if(NPCs!=null){
+            for (int i = 0;i<NPCs.Count;i++){
+                List<int[]> holdbound = NPCs[i].GetComponent<NPC>().Boundaries;
+                for (int j=0;j<holdbound.Count;j++){
+                    if(holdbound[j][0]==coord[0] & holdbound[j][1]==coord[1]){
+                        touchedinter=true;
+                    }
+                }
+            } 
+        }
+        return ((movevalid) && !(touchedinter));
     }
     //public GameObject popupwindow;
     //public TextMeshProUGUI popuptext;
@@ -915,6 +1115,14 @@ public class GameManager : MonoBehaviour{
         popupwindow.SetActive(false);
         popped=false;
     }
+    private void combatpopup(){
+        popped=true;
+        popuptext.text=("You have been attacked by a "+combatenemy.GetComponent<Character>().charname+"!");
+        popupwindow.SetActive(true);
+        battleops.SetActive(true);
+        descendops.SetActive(false);
+        popupops.SetActive(false);
+    }
 
     private bool nearbyneighbour(int x, int y){
         for(int i=0;i<enemies.Count;i++){
@@ -934,7 +1142,7 @@ public class GameManager : MonoBehaviour{
         return checking;
     }
 
-    private int direchoose(int[] enemy, int[] player){
+    private int direchoose(int[] enemy, int[] player, int i){
         List<List<int>> queue = new List<List<int>> {new List<int>{enemy[0],enemy[1],4}};
         int[] goalcords = new int[2] { (int)goal.position.x/-2, (int)goal.position.y/-2};
         bool searching = true;
@@ -945,129 +1153,158 @@ public class GameManager : MonoBehaviour{
                 searching = false;
                 return queue[increment][2];
             }
-            //CHECKING NORTH
-            if (MoveAllow(0, new int[2] {queue[increment][0], queue[increment][1]})){
-                if(direqueuecheck(queue,increment)){
-                    if(increment == 0)
-                    {
-                        queue.Add(new List<int>{queue[increment][0], queue[increment][1] + 1, 0});
-                    }
-                    else
-                    {
-                        queue.Add(new List<int>{queue[increment][0], queue[increment][1] + 1, queue[increment][2]});
-                    }
-                }
-            }
-            //CHECKING EAST
-            if (MoveAllow(1, new int[2] {queue[increment][0], queue[increment][1] }))
-            {
-                if(direqueuecheck(queue,increment)){
-                    if (increment == 0)
-                    {
-                        queue.Add(new List<int>{queue[increment][0]+1, queue[increment][1], 1});
-                    }
-                    else
-                    {
-                        queue.Add(new List<int>{queue[increment][0]+1, queue[increment][1], queue[increment][2]});
+            else{
+                //CHECKING NORTH
+                if (MoveAllow(0, new int[2] {queue[increment][0], queue[increment][1]})){
+                    if(direqueuecheck(queue,increment)){
+                        if(increment == 0)
+                        {
+                            queue.Add(new List<int>{queue[increment][0], queue[increment][1] + 1, 0});
+                        }
+                        else
+                        {
+                            queue.Add(new List<int>{queue[increment][0], queue[increment][1] + 1, queue[increment][2]});
+                        }
                     }
                 }
-            }
-            //CHECKING SOUTH
-            if (MoveAllow(2, new int[2] {queue[increment][0], queue[increment][1] }))
-            {
-                if(direqueuecheck(queue,increment)){
-                    if (increment == 0)
-                    {
-                        queue.Add(new List<int>{queue[increment][0], queue[increment][1] - 1, 2});
-                    }
-                    else
-                    {
-                        queue.Add(new List<int>{queue[increment][0], queue[increment][1] - 1, queue[increment][2]});
-                    }
-                }
-            }
-            //CHECKING WEST
-            if (MoveAllow(3, new int[2] {queue[increment][0], queue[increment][1] }))
-            {
-                if(direqueuecheck(queue,increment)){
-                    if (increment == 0)
-                    {
-                        queue.Add(new List<int>{queue[increment][0]-1, queue[increment][1], 3});
-                    }
-                    else
-                    {
-                        queue.Add(new List<int>{queue[increment][0]-1, queue[increment][1], queue[increment][2]});
+                //CHECKING EAST
+                if (MoveAllow(1, new int[2] {queue[increment][0], queue[increment][1] }))
+                {
+                    if(direqueuecheck(queue,increment)){
+                        if (increment == 0)
+                        {
+                            queue.Add(new List<int>{queue[increment][0]+1, queue[increment][1], 1});
+                        }
+                        else
+                        {
+                            queue.Add(new List<int>{queue[increment][0]+1, queue[increment][1], queue[increment][2]});
+                        }
                     }
                 }
-            }
-            increment = increment + 1;
-            if(increment>=queue.Count){
-                searching=false;
+                //CHECKING SOUTH
+                if (MoveAllow(2, new int[2] {queue[increment][0], queue[increment][1] }))
+                {
+                    if(direqueuecheck(queue,increment)){
+                        if (increment == 0)
+                        {
+                            queue.Add(new List<int>{queue[increment][0], queue[increment][1] - 1, 2});
+                        }
+                        else
+                        {
+                            queue.Add(new List<int>{queue[increment][0], queue[increment][1] - 1, queue[increment][2]});
+                        }
+                    }
+                }
+                //CHECKING WEST
+                if (MoveAllow(3, new int[2] {queue[increment][0], queue[increment][1] }))
+                {
+                    if(direqueuecheck(queue,increment)){
+                        if (increment == 0)
+                        {
+                            queue.Add(new List<int>{queue[increment][0]-1, queue[increment][1], 3});
+                        }
+                        else
+                        {
+                            queue.Add(new List<int>{queue[increment][0]-1, queue[increment][1], queue[increment][2]});
+                        }
+                    }
+                }
+                increment = increment + 1;
+                if(increment>=queue.Count){
+                    searching=false;
+                }
             }
         }
-        return 5;
+        return 4;
+    }
+
+    private int randomdire(int[] enemy){
+        Random rando = new Random();
+        List<int> direoptions = new List<int>();
+        if (MoveAllow(0, enemy) & nearbyneighbour(enemy[0],enemy[1]+1))
+        {
+            direoptions.Add(0);
+        }
+        if (MoveAllow(1, enemy) & nearbyneighbour(enemy[0]+1,enemy[1]))
+        {
+            direoptions.Add(1);
+        }
+        if (MoveAllow(2, enemy) & nearbyneighbour(enemy[0],enemy[1]-1))
+        {
+            direoptions.Add(2);
+        }
+        if (MoveAllow(3, enemy) & nearbyneighbour(enemy[0]-1,enemy[1]))
+        {
+            direoptions.Add(3);
+        }
+        if(direoptions.Count==0){
+            direoptions.Add(4);
+        }
+        return direoptions[rando.Next(0, direoptions.Count)];
+    }
+
+    private void RandomMove(int[] enemylocation,int i){
+        int dire = randomdire(enemylocation);
+        switch(dire){
+            case 0:
+                enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(0f, speed*-0.5f, 0f);
+                break;
+            case 1:
+                enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(speed*-0.5f, 0f, 0f);
+                break;
+            case 2:
+                enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(0f, speed*0.5f, 0f);
+                break;
+            case 3:
+                enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(speed*0.5f, 0f, 0f);
+                break;
+            case 4:
+                //Nowhere to move
+                break;
+        }
+    }
+
+    private void ChaseMove(int[] enemylocation, int[] playerlocation,int i){
+        int dire=direchoose(enemylocation, playerlocation, i);
+        switch(dire){
+            case 0:
+                if(nearbyneighbour(enemylocation[0],enemylocation[1]+1)){
+                    enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(0f, speed*-0.5f, 0f);
+                }
+                break;
+            case 1:
+                if(nearbyneighbour(enemylocation[0]+1,enemylocation[1])){
+                    enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(speed*-0.5f, 0f, 0f);
+                }
+                break;
+            case 2:
+                if(nearbyneighbour(enemylocation[0],enemylocation[1]-1)){
+                    enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(0f, speed*0.5f, 0f);
+                }
+                break;
+            case 3:
+                if(nearbyneighbour(enemylocation[0]-1,enemylocation[1])){
+                    enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(speed*0.5f, 0f, 0f);
+                }
+                break;
+            case 4:
+                //RUN CODE HERE FOR INITIALISING COMBAT
+                break;
+        }
     }
 
     private void EnemyMove(){
         if(enemies!=null){
-            Random rando = new Random();
             for (int i=0;i<enemies.Count;i++){
-                List<int> direoptions = new List<int>();
                 int[] enemylocation = new int[2]{(int)(enemies[i].transform.position.x-tilemap.transform.position.x)/2,(int)(enemies[i].transform.position.y-tilemap.transform.position.y)/2};
                 int[] playerlocation = PlayerLocate();
-                int dire = 0;
                 if (Math.Sqrt((playerlocation[0] - enemylocation[0]) * (playerlocation[0] - enemylocation[0]) + (playerlocation[1] - enemylocation[1]) * (playerlocation[1] - enemylocation[1])) <= 5)
                 {
-                    dire=direchoose(enemylocation, playerlocation);
-                    Debug.Log(dire);
+                    ChaseMove(enemylocation,playerlocation,i);
                 }
                 else
                 {
-                    if (MoveAllow(0, enemylocation))
-                    {
-                        direoptions.Add(0);
-                    }
-                    if (MoveAllow(1, enemylocation))
-                    {
-                        direoptions.Add(1);
-                    }
-                    if (MoveAllow(2, enemylocation))
-                    {
-                        direoptions.Add(2);
-                    }
-                    if (MoveAllow(3, enemylocation))
-                    {
-                        direoptions.Add(3);
-                    }
-                    dire = direoptions[rando.Next(0, direoptions.Count)];
-                }
-                switch(dire){
-                    case 0:
-                        if(nearbyneighbour(enemylocation[0],enemylocation[1]+1)){
-                            enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(0f, speed*-0.5f, 0f);
-                        }
-                        break;
-                    case 1:
-                        if(nearbyneighbour(enemylocation[0]+1,enemylocation[1])){
-                            enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(speed*-0.5f, 0f, 0f);
-                        }
-                        break;
-                    case 2:
-                        if(nearbyneighbour(enemylocation[0],enemylocation[1]-1)){
-                            enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(0f, speed*0.5f, 0f);
-                        }
-                        break;
-                    case 3:
-                        if(nearbyneighbour(enemylocation[0]-1,enemylocation[1])){
-                            enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(speed*0.5f, 0f, 0f);
-                        }
-                        break;
-                    case 4:
-                        //RUN CODE HERE FOR INITIALISING COMBAT
-                        break;
-                    case 5:
-                        //Nothing happens here, it can't get to the player
-                        break;
+                    RandomMove(enemylocation,i);
                 }
             }
         }
@@ -1080,13 +1317,401 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+    private void Kill(int i){
+        Destroy(enemies[i].GetComponent<Character>().goal);
+        Destroy(enemies[i]);
+        enemies.Remove(enemies[i]);
+        EnemySpawn();
+    }
+    private void CheckCaught(){
+        if(enemies!=null){
+            int[] playerlocation = {(int)goal.transform.position[0]/-2, (int)goal.transform.position[1]/-2};
+            for (int i=0;i<enemies.Count;i++){
+                int[] enemylocation = new int[2]{(int)(enemies[i].GetComponent<Character>().goal.transform.position.x-tilemap.transform.position.x)/2,(int)(enemies[i].GetComponent<Character>().goal.transform.position.y-tilemap.transform.position.y)/2};
+                if(playerlocation[0]==enemylocation[0] & playerlocation[1]==enemylocation[1]){
+                    combatenemy=enemies[i];
+                    combatenemyindex=i;
+                    combatpopup();
+                }
+            }
+        }
+    }
 
-    //public void CombatStart(){}
+    public void CombatStart(){
+        fled=false;
+        playericon.GetComponent<Image>().sprite=Player.GetComponent<Character>().images[Player.GetComponent<Character>().spriteoffset];
+        enemyicon.GetComponent<Image>().sprite=combatenemy.GetComponent<Character>().images[combatenemy.GetComponent<Character>().spriteoffset];
+        popupwindow.SetActive(false);
+        combatscreen.SetActive(true);
+        combattextpanel.SetActive(true);
+        combattext.text=("Battle has begun with the "+combatenemy.GetComponent<Character>().charname+"!");
+        playername.text=(Player.GetComponent<Character>().charname);
+        enemyname.text=(combatenemy.GetComponent<Character>().charname);
+        CombatUI();
+        if(Player.GetComponent<Character>().agility>combatenemy.GetComponent<Character>().agility){
+            turns=(int)(Player.GetComponent<Character>().agility/combatenemy.GetComponent<Character>().agility);
+            currentturn=0;
+            playerfirst=true;
+        }
+        else{
+            turns=(int)(combatenemy.GetComponent<Character>().agility/Player.GetComponent<Character>().agility);
+            currentturn=0;
+            playerfirst=false;
+        }
+        //Calculate the turn order
+    }
+    private int TurnCheck(){
+        if(currentturn%(turns+1)==0){
+            if(playerfirst){
+                //Enemy turn
+                return 0;
+            }
+            else{
+                //Player turn
+                return 1;
+            }
+        }
+        else{
+            if(playerfirst){
+                //Player turn
+                return 1;
+            }
+            else{
+                //Enemy turn
+                return 0;
+            }
+        }
+    }
+    public void NextTurn(){
+        //Checks if secondary entity turn
+        combattextpanel.SetActive(false);
+        if(fled){
+            endcombat(true);
+        }
+        if(Player.GetComponent<Character>().currhealth==0){
+            endcombat(false);
+        }
+        if(combatenemy.GetComponent<Character>().currhealth==0){
+            endcombat(true);
+        }
+        if((!fled) & (Player.GetComponent<Character>().currhealth!=0) & (combatenemy.GetComponent<Character>().currhealth!=0)){
+            currentturn++;
+            if(TurnCheck()==1){
+                PlayerTurn();
+            }
+            else{
+                EnemyTurn();
+            }
+        }
+    }
+
+    private void endcombat(bool success){
+        Random rando = new Random();
+        exppanel.SetActive(true);
+        donebutton.SetActive(true);
+        combatscreen.SetActive(false);
+        strpanel.SetActive(false);
+        agipanel.SetActive(false);
+        conpanel.SetActive(false);
+        defpanel.SetActive(false);
+        intpanel.SetActive(false);
+        wispanel.SetActive(false);
+        exptext.text="exp gained: 0";
+        if(success){
+            if(fled){
+                exptext.text=("ran away\nexp gained 0");
+            }
+            else{
+                int neededexp = (int)Math.Pow(1.2,Player.GetComponent<Character>().level)*500;
+                expgained=rando.Next((depth)*100,(depth+1)*100);
+                exptext.text=("exp gained: "+expgained);
+                Player.GetComponent<Character>().experience=Player.GetComponent<Character>().experience+expgained;
+                if (Player.GetComponent<Character>().experience>neededexp){
+                    Player.GetComponent<Character>().experience=Player.GetComponent<Character>().experience-neededexp;
+                    Player.GetComponent<Character>().level=Player.GetComponent<Character>().level+1;
+                    statpoints=3;
+                    donebutton.SetActive(false);
+                    strpanel.SetActive(true);
+                    agipanel.SetActive(true);
+                    conpanel.SetActive(true);
+                    defpanel.SetActive(true);
+                    intpanel.SetActive(true);
+                    wispanel.SetActive(true);
+                    UpdateStatsView();
+                }
+            }
+        }
+        else{
+            exppanel.SetActive(false);
+            GameOver();
+        }
+    }
+    public void CombatResult(){
+        if(bossfight){
+            popped=false;
+            exppanel.SetActive(false);
+            GameOver();
+        }
+        else{
+            popped=false;
+            Kill(combatenemyindex);
+            exppanel.SetActive(false);
+        }
+    }
+    private void GameOver(){
+        gameoverpanel.SetActive(true);
+        if(Player.GetComponent<Character>().currhealth==0){
+            gameovertext.text=("Game over\n\nYou failed to beat the game but all is not lost, you still have a chance to save the day\n\n"+
+            "get back into the dungeon, become stronger and beat the boss!");
+        }
+        else{
+            wins++;
+            gameovertext.text=("Game over\n\nyou have beaten the game, you defeated the boss and you have saved the day.\n\n"+
+            "don't want it to be over?\n\ngo back into the dungeon, fight the boss again, except this time it's stronger!");
+        }
+    }
+    public void SendBack(){
+        popped=false;
+        gameoverpanel.SetActive(false);
+        depth=0;
+        Player.GetComponent<Character>().currhealth=Player.GetComponent<Character>().maxhealth;
+        Player.GetComponent<Character>().currmana=Player.GetComponent<Character>().maxmana;
+        GridDisplay();
+    }
+
+    private void PlayerTurn(){
+        combatoptions.SetActive(true);
+    }
+
+    private void EnemyTurn(){
+        //bandit orc goblin slime golem
+        Random rando = new Random();
+        int chooseattack=0;
+        int choosedefend=0;
+        switch(combatenemy.GetComponent<Character>().charname){
+            case "Bandit":
+                //50% attack, 45% defend, 5% flee
+                chooseattack=50;
+                choosedefend=95;
+                break;
+            case "Orc":
+                //90% attack, 10% defend, 0% flee
+                chooseattack=90;
+                choosedefend=100;
+                break;
+            case "Goblin":
+                //70% attack, 20% defend, 10% flee
+                chooseattack=70;
+                choosedefend=90;
+                break;
+            case "Slime":
+                //60% attack, 15% defend, 25% flee
+                chooseattack=60;
+                choosedefend=75;
+                break;
+            case "Golem":
+                //25% attack, 70% defend, 5% flee
+                chooseattack=25;
+                choosedefend=95;
+                break;
+        }
+        int roll = rando.Next(1,101);
+        if(roll<=chooseattack){
+            Attack();
+        }
+        else{
+            if(roll<=choosedefend){
+                Defend();
+            }
+            else{
+                Flee();
+            }
+        }
+    }
+
+    public void Attack(){
+        int damage = 0;
+        if(TurnCheck()==1){
+            int defence=combatenemy.GetComponent<Character>().defence;
+            int strength=Player.GetComponent<Character>().strength;
+            if(combatenemy.GetComponent<Character>().statuses.Contains("Defending")){
+                defence=defence*2;
+                combatenemy.GetComponent<Character>().statuses.Remove("Defending");
+            }
+            if(strength>defence/2){
+                damage=(strength-defence/2);
+            }
+            if(strength>defence){
+                damage=(strength-defence)*4;
+            }
+            combatenemy.GetComponent<Character>().Harm(damage);
+            combattext.text=("You attacked the "+combatenemy.GetComponent<Character>().charname+" for "+damage+" damage!");
+        }
+        else{
+            int defence=Player.GetComponent<Character>().defence;
+            int strength=combatenemy.GetComponent<Character>().strength;
+            if(Player.GetComponent<Character>().statuses.Contains("Defending")){
+                defence=defence*2;
+                Player.GetComponent<Character>().statuses.Remove("Defending");
+            }
+            if(strength>defence/2){
+                damage=(strength-defence/2);
+            }
+            if(strength>defence){
+                damage=(strength-defence)*4;
+            }
+            
+            Player.GetComponent<Character>().Harm(damage);
+            combattext.text=("You were attacked by the "+combatenemy.GetComponent<Character>().charname+" for "+damage+" damage!");
+        }
+        combattextpanel.SetActive(true);
+        CombatUI();
+    }
+
+    public void Defend(){
+        if(TurnCheck()==1){
+            Player.GetComponent<Character>().statuses.Add("Defending");
+            combattext.text=("You have defended yourself against an attack!");
+        }
+        else{
+            combatenemy.GetComponent<Character>().statuses.Add("Defending");
+            combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" has defended itself against an attack!");
+        }
+        combattextpanel.SetActive(true);
+    }
+
+    public void Spells(){
+        if(TurnCheck()==1){
+            //
+        }
+        else{
+
+        }
+    }
+
+    public void Flee(){
+        int playspeed=Player.GetComponent<Character>().agility;
+        int enemspeed=combatenemy.GetComponent<Character>().agility;
+        int chance=0;
+        Random rando = new Random();
+        int roll = rando.Next(1,101);
+        combattextpanel.SetActive(true);
+        if(TurnCheck()==1){
+            //Player Turn
+            chance=(int)((playspeed/enemspeed)*100);
+            if(roll<=chance){
+                combattext.text=("You have successfully fled from combat!");
+                fled=true;
+            }
+            else{
+                combattext.text=("You were not able to flee from combat!");
+            }
+        }
+        else{
+            //Enemy Turn
+            chance=(int)((enemspeed/playspeed)*100);
+            if(roll<=chance){
+                combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" has successfully run away!");
+                fled=true;
+            }
+            else{
+                combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" tried to run away but failed!");
+            }
+        }
+    }
+
+    public void UpdateStats(string Option){
+        statpoints--;
+        Player.GetComponent<Character>().ChangeStat(Option,1);
+        UpdateStatsView();
+    }
+    private void UpdateStatsView(){
+        exptext.text=("exp gained: "+expgained+"\nlevel up\nusable points: "+statpoints);
+        strtext.text=("strength: "+Player.GetComponent<Character>().strength);
+        agitext.text=("agility: "+Player.GetComponent<Character>().agility);
+        context.text=("constitution: "+Player.GetComponent<Character>().constitution);
+        deftext.text=("defence: "+Player.GetComponent<Character>().defence);
+        inttext.text=("intelligence: "+Player.GetComponent<Character>().intelligence);
+        wistext.text=("wisdom: "+Player.GetComponent<Character>().wisdom);
+        donebutton.SetActive(false);
+        strpanel.SetActive(true);
+        agipanel.SetActive(true);
+        conpanel.SetActive(true);
+        defpanel.SetActive(true);
+        intpanel.SetActive(true);
+        wispanel.SetActive(true);
+        if(statpoints==0){
+            donebutton.SetActive(true);
+        }
+    }
+
+    private void CombatUI(){
+        playerhealth.text=(Player.GetComponent<Character>().currhealth+"/"+Player.GetComponent<Character>().maxhealth);
+        enemyhealth.text=(combatenemy.GetComponent<Character>().currhealth+"/"+combatenemy.GetComponent<Character>().maxhealth);
+        int playerratio=(int)(Player.GetComponent<Character>().currhealth/Player.GetComponent<Character>().maxhealth)*100;
+        int enemyratio=(int)(combatenemy.GetComponent<Character>().currhealth/combatenemy.GetComponent<Character>().maxhealth)*100;
+        float playerdiff=playerhealthbar.GetComponent<RectTransform>().rect.width;
+        float enemydiff=enemyhealthbar.GetComponent<RectTransform>().rect.width;
+        playerhealthbar.GetComponent<RectTransform>().sizeDelta = new Vector2 (playerratio*3, 50);
+        enemyhealthbar.GetComponent<RectTransform>().sizeDelta = new Vector2 (enemyratio*3, 50);
+        //playerdiff=(playerdiff-playerhealthbar.GetComponent<RectTransform>().rect.width)/3;
+        //enemydiff=(enemydiff-enemyhealthbar.GetComponent<RectTransform>().rect.width)/3;
+        //playerhealthbar.transform.position = playerhealthbar.transform.position - new Vector3(playerhealthbar.transform.position.x-playerdiff, 0, 0);
+        //enemyhealthbar.transform.position = enemyhealthbar.transform.position - new Vector3(enemyhealthbar.transform.position.x-enemydiff, 0, 0);
+        //playerhealthbar.transform.position = new Vector3(-400+playerratio*1.5f, playerhealthbar.transform.position.y, 0);
+        //enemyhealthbar.transform.position = new Vector3(100+enemyratio*1.5f, enemyhealthbar.transform.position.y, 0);
+    }
+
+    private void Interact(int[] coords){
+        if(NPCs!=null){
+            for (int i = 0;i<NPCs.Count;i++){
+                List<int[]> holdbound = NPCs[i].GetComponent<NPC>().Boundaries;
+                for (int j=0;j<holdbound.Count;j++){
+                    if(holdbound[j][0]==coords[0] & holdbound[j][1]==coords[1]){
+                        interactindex=i;
+                        popped=true;
+                    }
+                }
+            } 
+        }
+        if(popped){
+            DialogueScroll();
+        }
+    }
+
+    public void DialogueScroll(){
+        string result = NPCs[interactindex].GetComponent<NPC>().DiaRead();
+        popuptext.text=result;
+        popupwindow.SetActive(true);
+        nextdiabutton.SetActive(true);
+        if(NPCs[interactindex].GetComponent<NPC>().DialogueSteps+1>=NPCs[interactindex].GetComponent<NPC>().Dialogue.Count){
+            nextdiatext.text=NPCs[interactindex].GetComponent<NPC>().PostDialogue;
+        }
+        else{
+            nextdiatext.text="Next";
+        }
+        if(result=="Exit"){
+            nextdiabutton.SetActive(false);
+            popupwindow.SetActive(false);
+            popped=false;
+        }
+        if(result=="Fight"){
+            nextdiabutton.SetActive(false);
+            popupwindow.SetActive(false);
+            combatenemy=NPCs[interactindex];
+            bossfight=true;
+            combatpopup();
+        }
+    }
 
     void Start() {
         depth=0;
+        wins=0;
+        popped=false;
         GridDisplay();
         goal.SetParent(null);
+        Player.GetComponent<Character>().initCharacter(MainMenu.username,1,10,10,10,10,10,10,0);
+        bossfight=false;
     }
 
     void Update() {
@@ -1114,6 +1739,7 @@ public class GameManager : MonoBehaviour{
                             LandOnLadder();
                         }
                     }
+                    CheckCaught();
                 }
                 else if(Input.GetAxisRaw("Vertical")!=0f){
                     if(Input.GetAxisRaw("Vertical")==1f){
@@ -1134,23 +1760,29 @@ public class GameManager : MonoBehaviour{
                             LandOnLadder();
                         }
                     }
+                    CheckCaught();
+                }
+                //This will be the section for player interaction
+                if (Input.GetKeyDown(KeyCode.E))
+                {
+                    int[] intercords = PlayerLocate();
+                    switch(direction){
+                        case 0:
+                            Interact(new int[2]{intercords[0],intercords[1]+1});
+                            break;
+                        case 1:
+                            Interact(new int[2]{intercords[0]+1,intercords[1]});
+                            break;
+                        case 2:
+                            Interact(new int[2]{intercords[0],intercords[1]-1});
+                            break;
+                        case 3:
+                            Interact(new int[2]{intercords[0]-1,intercords[1]});
+                            break;
+                    }
+                    //Interaction
                 }
             }
-        }
-        //This will be the section for player interaction
-        if (Input.GetKeyDown(KeyCode.E))
-        {
-            switch(direction){
-                case 0:
-                    break;
-                case 1:
-                    break;
-                case 2:
-                    break;
-                case 3:
-                    break;
-            }
-            //Interaction
         }
     }
 }

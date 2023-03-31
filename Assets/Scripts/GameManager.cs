@@ -16,6 +16,7 @@ public class GameManager : MonoBehaviour{
     public Tile[] tiles;
     public Tilemap tilemap;
     public float speed = 4;
+    private bool tileactive = false;
     public int gridsize = 14;
     public int enemycount = 4;
     public Transform goal;
@@ -28,14 +29,59 @@ public class GameManager : MonoBehaviour{
     private int bosslevel=10;
     private List<List<int>> trcorners;
     private List<List<int>> blcorners;
-    private int[] laddercord;
+    private List<List<int>> roomcenters;
     private List<int> alltiles = new List<int>{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44};
     private List<int> squaretiles = new List<int>{0,1,5,9,13,17,19,21,23,25};
-    private bool[,] tilemove = { //The set of data that checks whether a player can move in each direction
-        {false,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,true,true,true,true},
-        {false,true,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,false,true,false,false,true,false,true,true,true,true,true,true,true,true,true,true,true,true,true},
-        {false,true,true,true,true,true,true,true,true,true,false,false,false,false,true,true,true,true,true,true,true,true,false,false,false,false,false,false,true,false,false,true,true,true,true,true,true,true,true,true,true,true,true,true,true},
-        {false,true,true,true,true,true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,true,true,true,true,false,false,false,false,false,true,true,false,true,true,true,true,true,true,true,true,true,true,true,true,true}
+    private bool[,] tilemove = {
+        {false,false,false,false}, //0 N
+        {true,true,true,true}, //1 A
+        {false,true,true,true}, //2 B1
+        {false,true,true,true}, //3 B2
+        {false,true,true,true}, //4 B3 
+        {false,true,true,true}, //5 B
+        {true,false,true,true}, //6 C1
+        {true,false,true,true}, //7 C2
+        {true,false,true,true}, //8 C3
+        {true,false,true,true}, //9 C
+        {true,true,false,true}, //10 D1
+        {true,true,false,true}, //11 D2
+        {true,true,false,true}, //12 D3
+        {true,true,false,true}, //13 D
+        {true,true,true,false}, //14 E1
+        {true,true,true,false}, //15 E2
+        {true,true,true,false}, //16 E3
+        {true,true,true,false}, //17 E
+        {false,true,true,false}, //18 F1
+        {false,true,true,false}, //19 F
+        {false,false,true,true}, //20 G1
+        {false,false,true,true}, //21 G
+        {true,false,false,true}, //22 H1
+        {true,false,false,true}, //23 H
+        {true,true,false,false}, //24 I1 
+        {true,true,false,false}, //25 I
+        {true,false,false,false}, //26 J
+        {false,true,false,false}, //27 K
+        {false,false,true,false}, //28 L
+        {false,false,false,true}, //29 M
+        {false,true,false,true}, //30 O
+        {true,false,true,false}, //31 P
+        {true,true,true,true}, //32 Q1
+        {true,true,true,true}, //33 Q2
+        {true,true,true,true}, //34 Q3
+        {true,true,true,true}, //35 Q4
+        {true,true,true,true}, //36 Q5
+        {true,true,true,true}, //37 Q6
+        {true,true,true,true}, //38 Q7
+        {true,true,true,true}, //39 Q8
+        {true,true,true,true}, //40 Q9
+        {true,true,true,true}, //41 Q10
+        {true,true,true,true}, //42 Q11
+        {true,true,true,true}, //43 Q12
+        {true,true,true,true}, //44 Q13
+        {true,true,true,true}, //45 Ladder
+        {true,true,true,true}, //46 Magma
+        {true,true,true,true}, //47 Ice
+        {true,true,true,true} //48 Spike
     };
     private int[,] connections = { //Set of direction connection groups for each tile
         {4,4,4,4}, //0 N
@@ -148,9 +194,15 @@ public class GameManager : MonoBehaviour{
     private int interactindex;
     public GameObject gameoverpanel;
     public TextMeshProUGUI gameovertext;
+
+    public TextMeshProUGUI UInametext;
+    public TextMeshProUGUI UIHPtext;
+    public TextMeshProUGUI UImanatext;
     
     //Function for displaying the dungeon layout
     public void GridDisplay() {
+        UIstats();
+        tileactive=true;
         bool normgen=!(depth==0 || depth==bosslevel);
         bool validgen = false;
         int counter = 0;
@@ -181,6 +233,7 @@ public class GameManager : MonoBehaviour{
             DoorMaker();
             PlayerLocation = PlayerSpawn().ToArray();
             LadderMake();
+            TileGen();
             EnemySpawn();
         }
         else{
@@ -191,8 +244,8 @@ public class GameManager : MonoBehaviour{
         for (int y=0;y<gridsize;y++){
             for (int x=0;x<gridsize;x++){
                 tilemap.SetTile(new Vector3Int(x*2+1, y*2+1, 0), tiles[gridstore[y,x]]);
-                if (y==laddercord[0] & x == laddercord[1]){
-                    tilemap.SetTile(new Vector3Int(x*2+1, y*2+1, 0), tiles[45]);
+                if(gridstore[y,x]==48){
+                    tilemap.SetTile(new Vector3Int(x*2+1, y*2+1, 0), tiles[1]);
                 }
             }
         }
@@ -206,7 +259,6 @@ public class GameManager : MonoBehaviour{
         if(depth==0){
             GridTut();
             PlayerLocation=new int[2]{0,2};
-            laddercord = new int[2]{2,7};
             NPCs.Add(Instantiate(NPCprefab, new Vector3(0,0,0), Quaternion.identity));
             NPCs[NPCs.Count-1].transform.SetParent(tilemap.transform);
             NPCs[NPCs.Count-1].transform.position =  new Vector3(2*2+tilemap.transform.position.x,2*4+tilemap.transform.position.y,-1);
@@ -222,15 +274,41 @@ public class GameManager : MonoBehaviour{
         else{
             GridBoss();
             PlayerLocation=new int[2]{0,4};
-            laddercord = new int[2]{gridsize,gridsize};
             NPCs.Add(Instantiate(NPCprefab, new Vector3(0,0,0), Quaternion.identity));
             NPCs[NPCs.Count-1].transform.SetParent(tilemap.transform);
             NPCs[NPCs.Count-1].transform.position =  new Vector3(2*4+tilemap.transform.position.x,2*4+tilemap.transform.position.y,-1);
             EnemyStats(NPCs[NPCs.Count-1],true);
-            NPCs[NPCs.Count-1].GetComponent<NPC>().initNPC(new List<string>{"BOSS FIGHT TIME TINY HUMAN"},"Fight","BOSS", new int[2]{4,4});
+            NPCs[NPCs.Count-1].GetComponent<NPC>().initNPC(new List<string>{BossDialogue(NPCs[NPCs.Count-1])},"Fight","BOSS", new int[2]{4,4});
             NPCs[NPCs.Count-1].transform.localScale *= 3;
             NPCs[NPCs.Count-1].GetComponent<Character>().goal.transform.SetParent(tilemap.transform);
         }
+    }
+    private string BossDialogue(GameObject NPC){
+        switch(NPC.GetComponent<Character>().charname){
+            //Bandit
+            case "Bandit":
+                return "I'm the king of this dungeon, get out of here!";
+            //Orc
+            case "Orc":
+                return "Human filth, I'll rip your kind to shreds!";
+            //Goblin
+            case "Goblin":
+                return "HEHEHEHE A LITTLE HUMAN HAS FALLEN INTO MY PIT?!";
+            //Slime
+            case "Slime":
+                return "*squishy slime noises*";
+            //Golem
+            case "Golem":
+                return "INTRUDER DETECTED: INITIATING ATTACK SEQUENCE"; 
+            case "Wizard":
+                if(wins==0){
+                    return "It's too late fool, I have forever scarred this land, now you shall die!";
+                }
+                else{
+                    return "You've beaten me already, but I've prepared myself for a rematch!";
+                }
+        }
+        return "You've picked a fight with the wrong person, prepare to die!";
     }
     private void GridTut()
     {
@@ -246,7 +324,7 @@ public class GameManager : MonoBehaviour{
                     hold = new List<int>{17,1,1,1,9,0,25,13,23};
                     break;
                 case 2:
-                    hold = new List<int>{17,1,1,1,9,0,17,1,9};
+                    hold = new List<int>{17,1,1,1,9,0,17,45,9};
                     break;
                 case 3:
                     hold = new List<int>{17,1,1,1,37,30,39,1,9};
@@ -301,6 +379,7 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+
     //Initialises the dungeon layout storage with a valid base
     private void GridStart() //Sets the initial values for the dungeon tile grid
     {
@@ -320,7 +399,15 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+
     private void LadderMake(){
+        List<List<int>> Validtiles = ValidTiler();
+        Random rando = new Random();
+        int hold = rando.Next(0,Validtiles.Count-1);
+        gridstore[Validtiles[hold][0],Validtiles[hold][1]]=45;
+    }
+    
+    private List<List<int>> ValidTiler(){
         int[] playerlocation = PlayerLocate();
         List<List<int>> Validtiles = new List<List<int>>();
         for (int y=1; y<gridsize-1;y++){
@@ -330,10 +417,9 @@ public class GameManager : MonoBehaviour{
                 }
             }
         }
-        Random rando = new Random();
-        int hold = rando.Next(0,Validtiles.Count-1);
-        laddercord = new int[2]{Validtiles[hold][0],Validtiles[hold][1]};
+        return Validtiles;
     }
+
     private int[] PlayerSpawn(){
         List<List<int>> Validtiles = new List<List<int>>();
         for (int i=1; i<gridsize-1;i++){
@@ -347,6 +433,7 @@ public class GameManager : MonoBehaviour{
         int hold = rando.Next(0,Validtiles.Count-1);
         return new int[2]{Validtiles[hold][0],Validtiles[hold][1]};
     }
+
     private int[] EnemyValid(){
         int[] playerlocation = PlayerLocate();
         List<List<int>> Validtiles = new List<List<int>>();
@@ -361,6 +448,7 @@ public class GameManager : MonoBehaviour{
         int hold = rando.Next(0,Validtiles.Count-1);
         return new int[2]{Validtiles[hold][1],Validtiles[hold][0]};
     }
+
     private void EnemySpawn(){
         if(enemies.Count<enemycount){
             Random rando = new Random();
@@ -390,6 +478,7 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+
     private void EnemyStats(GameObject enemy, bool boss){
         Random rando = new Random();
         int monsternum=rando.Next(0,6);
@@ -399,7 +488,7 @@ public class GameManager : MonoBehaviour{
         if(boss){
             modifier=modifier*1.2;
             if(wins==0){
-                monsternum=6;
+                monsternum=5;
             }
         }
         switch(monsternum){
@@ -416,7 +505,7 @@ public class GameManager : MonoBehaviour{
             //Goblin
             case 2:
                 name = "Goblin";
-                stats = new double[7]{2+modifier*0.4,10+modifier*2,4+modifier*0.8,4+modifier*0.8,5+modifier,5+modifier,4};
+                stats = new double[7]{5+modifier,10+modifier*2,4+modifier*0.8,4+modifier*0.8,5+modifier,2+modifier*0.4,4};
                 break;
             //Slime
             case 3:
@@ -434,8 +523,12 @@ public class GameManager : MonoBehaviour{
                 break; 
         }
         enemy.GetComponent<Character>().initCharacter(name,depth,(int)stats[0],(int)stats[1],(int)stats[2],(int)stats[3],(int)stats[4],(int)stats[5],(int)stats[6]);
+        if(monsternum==5){
+            enemy.GetComponent<Character>().roomvisiting=roomcenters;
+        }
         //name, strength, agility, constitution, defence, intelligence, wisdom, spriteoffset
     }
+
     private int RoomFinder(int[] location){
         for (int i=0;i<trcorners.Count;i++){
             if((location[1]<=trcorners[i][0]) & (location[0]<=trcorners[i][1])){
@@ -446,6 +539,7 @@ public class GameManager : MonoBehaviour{
         }
         return trcorners.Count;
     }
+
     //This function checks that the dungeon layout contains only valid tiles
     private bool GridCheck() //Checks whether the grid has been successfully created or lacks tiles.
     {
@@ -461,6 +555,7 @@ public class GameManager : MonoBehaviour{
         }
         return true;
     }
+
     //This function finds the centre for each room
     private List<List<int>> RoomCentFinder() {
         trcorners = new List<List<int>>();
@@ -497,8 +592,10 @@ public class GameManager : MonoBehaviour{
             //Calculates the centre of each room
             roomcents.Add(new List<int>{((int)((trcorners[i][0]+blcorners[i][0])/2d)),((int)((trcorners[i][1]+blcorners[i][1])/2d))});
         }
+        roomcenters=roomcents;
         return roomcents;
     }
+
     //Function for burrowing through walls to create new corridors
     private bool DoorHole(List<int> currloc, int direction){
         switch(direction){
@@ -641,6 +738,7 @@ public class GameManager : MonoBehaviour{
         }
         return false;
     }
+
     private void DoorMaker(){
         List<List<int>> cents = RoomCentFinder();
         List<List<int>> connects = Shortestroomfind(cents);
@@ -752,6 +850,7 @@ public class GameManager : MonoBehaviour{
         }
         EdgeSmoother();
     }
+
     private void EdgeSmoother(){
         for(int i = 1; i<gridsize-1;i++){
             for(int j =1; j<gridsize -1; j++){
@@ -806,6 +905,7 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+
     //This function finds the room closest to each room
     private List<List<int>> Shortestroomfind(List<List<int>> cents){
         List<List<int>> shortconnects = new List<List<int>>();
@@ -826,6 +926,7 @@ public class GameManager : MonoBehaviour{
         shortconnects=SecondConnects(shortconnects,cents);
         return shortconnects;
     }
+
     //Connects any rooms that haven't previously been connected to the network
     private List<List<int>> SecondConnects(List<List<int>> shortconnects, List<List<int>> cents) {
         List<int> connected = new List<int>{0};
@@ -896,6 +997,7 @@ public class GameManager : MonoBehaviour{
         }
         return shortconnects;
     }
+
     private void GridGen() { //Function for the generation of the dungeon layout
         //Preparation of initial variables
         GridStart();
@@ -979,6 +1081,7 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+
     //Flawed function, lowest entropy has the desire to naturally fill the area with block cells, when forcing rooms it will make minimum sized rooms
     private void GridGenLowestEntropy() { //Function for the generation of the dungeon layout
         //Preparation of initial variables
@@ -1080,7 +1183,7 @@ public class GameManager : MonoBehaviour{
                 coord[0]=location[0]-1;
                 break;
         }
-        bool movevalid = tilemove[direction, gridstore[location[1],location[0]]];
+        bool movevalid = tilemove[gridstore[location[1],location[0]],direction];
         bool touchedinter = false;
         if(NPCs!=null){
             for (int i = 0;i<NPCs.Count;i++){
@@ -1094,20 +1197,204 @@ public class GameManager : MonoBehaviour{
         }
         return ((movevalid) && !(touchedinter));
     }
-    //public GameObject popupwindow;
-    //public TextMeshProUGUI popuptext;
-    //public GameObject popupops;
-    //public GameObject descendops;
-    //public GameObject battleops;
-    private void LandOnLadder(){
+
+    private void TileGen(){
+        Random rando = new Random();
+        int magmaice = rando.Next(1,3);
+        TileMaker(45+magmaice);
+        TileMaker(45+3-magmaice);
+        TileMaker(48);
+    }
+
+    private void TileMaker(int type){
+        int freespots=OpenCounter();
+        if(freespots>7){
+            Random rando = new Random();
+            List<List<int>> validtiles = ValidTiler();
+            int randindex = rando.Next(0,validtiles.Count);
+            if(type!=48){
+                List<List<int>> queue = new List<List<int>>();
+                int counting = 0;
+                bool failed = false;
+                while(queue.Count<4){
+                    randindex = rando.Next(0,validtiles.Count);
+                    queue = ConnectedEmpty(validtiles[randindex]);
+                    counting++;
+                    if(counting == 1000){
+                        failed=true;
+                        break;
+                    }
+                }
+                if(!failed){
+                    List<int> coord = queue[rando.Next(0,queue.Count)];
+                    int boundary = queue.Count;
+                    if(queue.Count>7){
+                        boundary = queue.Count/2;
+                    }
+                    int tiles = rando.Next(3,boundary);
+                    int currtiles=0;
+                    gridstore[coord[0],coord[1]]=type;
+                    Growingtile(new List<List<int>>{new List<int>{coord[0],coord[1]}},currtiles,tiles,type);
+                }
+            }
+            else{
+                int spikes = rando.Next(1,4);
+                int currspike = 0;
+                while(currspike<spikes){
+                    randindex = rando.Next(0,validtiles.Count);
+                    if(gridstore[validtiles[randindex][0],validtiles[randindex][1]]!=type){
+                        currspike++;
+                        gridstore[validtiles[randindex][0],validtiles[randindex][1]]=type;
+                    }
+                }
+            }
+        }
+    }
+
+    private void Growingtile(List<List<int>> visited, int currtile, int maxtile, int type){
+        List<List<int>> store = new List<List<int>>();
+        for(int i=0;i<visited.Count;i++){
+            //ChECKING NORTH
+            if (gridstore[visited[i][0]+1,visited[i][1]]==1){
+                if(EmptyQueueCheck(visited,new List<int>{visited[i][0]+1,visited[i][1]})){
+                    store.Add(new List<int>{visited[i][0]+1, visited[i][1]});
+                }
+            }
+            //ChECKING EAST
+            if (gridstore[visited[i][0],visited[i][1]+1]==1){
+                if(EmptyQueueCheck(visited,new List<int>{visited[i][0],visited[i][1]+1})){
+                    store.Add(new List<int>{visited[i][0], visited[i][1]+1});
+                }
+            }
+            //ChECKING SOUTH
+            if (gridstore[visited[i][0]-1,visited[i][1]]==1){
+                if(EmptyQueueCheck(visited,new List<int>{visited[i][0]-1,visited[i][1]})){
+                    store.Add(new List<int>{visited[i][0]-1, visited[i][1]});
+                }
+            }
+            //ChECKING WEST
+            if (gridstore[visited[i][0],visited[i][1]-1]==1){
+                if(EmptyQueueCheck(visited,new List<int>{visited[i][0],visited[i][1]-1})){
+                    store.Add(new List<int>{visited[i][0], visited[i][1]-1});
+                }
+            }
+        }
+        Random rando = new Random();
+        int randint = rando.Next(0,store.Count);
+        visited.Add(new List<int>{store[randint][0],store[randint][1]});
+        gridstore[store[randint][0],store[randint][1]]=type;
+        currtile++;
+        if(currtile<maxtile){
+            Growingtile(visited, currtile, maxtile, type);
+        }
+    }
+
+    private bool EmptyQueueCheck(List<List<int>> queue,List<int> coordinate){
+        bool checking=true;
+        for(int i=0;i<queue.Count;i++){
+            if((queue[i][0]==coordinate[0]) && (queue[i][1]==coordinate[1])){
+                checking=false;
+            }
+        }
+        return checking;
+    }
+
+    private List<List<int>> ConnectedEmpty(List<int> opener){
+        List<List<int>> queue = new List<List<int>>();
+        queue.Add(opener);
+        bool connecting = true;
+        int index = 0;
+        while(connecting){
+            //CHECKING NORTH
+            if (gridstore[queue[index][0]+1,queue[index][1]]==1){
+                if(EmptyQueueCheck(queue,new List<int>{queue[index][0]+1,queue[index][1]})){
+                    queue.Add(new List<int>{queue[index][0]+1, queue[index][1]});
+                }
+            }
+            //CHECKING EAST
+            if (gridstore[queue[index][0],queue[index][1]+1]==1){
+                if(EmptyQueueCheck(queue,new List<int>{queue[index][0],queue[index][1]+1})){
+                    queue.Add(new List<int>{queue[index][0], queue[index][1]+1});
+                }
+            }
+            //CHECKING SOUTH
+            if (gridstore[queue[index][0]-1,queue[index][1]]==1){
+                if(EmptyQueueCheck(queue,new List<int>{queue[index][0]-1,queue[index][1]})){
+                    queue.Add(new List<int>{queue[index][0]-1, queue[index][1]});
+                }
+            }
+            //CHECKING WEST
+            if (gridstore[queue[index][0],queue[index][1]-1]==1){
+                if(EmptyQueueCheck(queue,new List<int>{queue[index][0],queue[index][1]-1})){
+                    queue.Add(new List<int>{queue[index][0], queue[index][1]-1});
+                }
+            }
+            index = index + 1;
+            if(index>=queue.Count){
+                connecting=false;
+            }
+        }
+        return queue;
+    }
+
+    private int OpenCounter(){
+        int counter=0;
+        for (int i=0;i<gridsize;i++){
+            for(int j=0;j<gridsize;j++){
+                if(gridstore[i,j]==1){
+                    counter++;
+                }
+            }
+        }
+        return counter;
+    }
+
+    private void LandOnTile(){
         int [] goallocate = new int[2]{(int)goal.position.x/-2,(int)goal.position.y/-2};
-        if(goallocate[1]==laddercord[0] & goallocate[0]==laddercord[1]){
+        //Ladder
+        if(gridstore[goallocate[1],goallocate[0]]==45){
             popped=true;
             popuptext.text="You have found a ladder down to the next layer! Would you like to descend?";
             popupwindow.SetActive(true);
             descendops.SetActive(true);
             popupops.SetActive(false);
             battleops.SetActive(false);
+        }
+        //Magma
+        if(gridstore[goallocate[1],goallocate[0]]==46){
+            Player.GetComponent<Character>().currhealth=Player.GetComponent<Character>().currhealth-5;
+            UIstats();
+        }
+        //Ice
+        if(gridstore[goallocate[1],goallocate[0]]==47){
+            bool caught=CheckCaught();
+            if (!caught){
+                switch(direction){
+                    case 0:
+                        goal.position = goal.position - new Vector3(0f, speed*0.5f, 0f);
+                        break;
+                    case 1:
+                        goal.position = goal.position - new Vector3(speed*0.5f, 0f, 0f);
+                        break;
+                    case 2:
+                        goal.position = goal.position - new Vector3(0f, -1*speed*0.5f, 0f);
+                        break;
+                    case 3:
+                        goal.position = goal.position - new Vector3(-1*speed*0.5f, 0f, 0f);
+                        break;
+                }
+                LandOnTile();
+                CheckCaught();
+            }
+        }
+        //Spike
+        if(gridstore[goallocate[1],goallocate[0]]==48){
+            Player.GetComponent<Character>().currhealth=Player.GetComponent<Character>().currhealth-5;
+            UIstats();
+            tilemap.SetTile(new Vector3Int(goallocate[0]*2+1, goallocate[1]*2+1, 0), tiles[48]);
+        }
+        if(Player.GetComponent<Character>().currhealth==0){
+            GameOver();
         }
     }
 
@@ -1122,6 +1409,7 @@ public class GameManager : MonoBehaviour{
         popupwindow.SetActive(false);
         popped=false;
     }
+    
     private void combatpopup(){
         popped=true;
         popuptext.text=("You have been attacked by a "+combatenemy.GetComponent<Character>().charname+"!");
@@ -1132,6 +1420,29 @@ public class GameManager : MonoBehaviour{
         popupops.SetActive(false);
     }
 
+    private int[] Patrol(int[] enemylocation, int i){
+        int[] goalcords = new int[2]{0,0};
+        if(enemies[i].GetComponent<Character>().roomvisiting==null){
+            enemies[i].GetComponent<Character>().roomvisiting=roomcenters;
+        }
+        List<List<int>> visiting = enemies[i].GetComponent<Character>().roomvisiting;
+        int bestdist=10000000;
+        for (int j=0;j<visiting.Count;j++){
+            if(enemylocation[0]==visiting[i][1] && enemylocation[1]==visiting[i][0]){
+                enemies[i].GetComponent<Character>().roomvisiting.Remove(enemies[i].GetComponent<Character>().roomvisiting[i]);
+            }
+            else{
+                double dist;
+                dist = Math.Sqrt((enemylocation[0]-visiting[i][1])*(enemylocation[0]-visiting[i][1])+(enemylocation[1]-visiting[i][0])*(enemylocation[1]-visiting[i][0]));
+                if(dist<bestdist){
+                    bestdist=(int)dist;
+                    goalcords = new int[2]{visiting[i][1],visiting[i][0]};
+                }
+            }
+        }
+        return goalcords;
+    }
+
     private bool nearbyneighbour(int x, int y){
         for(int i=0;i<enemies.Count;i++){
             if ((enemies[i].GetComponent<Character>().goal.transform.position[0]-tilemap.transform.position.x)/2==x & (enemies[i].GetComponent<Character>().goal.transform.position[1]-tilemap.transform.position.y)/2==y){
@@ -1140,23 +1451,43 @@ public class GameManager : MonoBehaviour{
         }
         return true;
     }
+
     private bool direqueuecheck(List<List<int>> queue,int increment){
         bool checking=true;
         for(int i=0;i<queue.Count;i++){
-            if((queue[i][0]==queue[increment][0]) & (queue[i][1]==queue[increment][1]) & (i!=increment)){
+            if((queue[i][0]==queue[increment][0]) && (queue[i][1]==queue[increment][1]) && (i!=increment)){
                 checking=false;
             }
         }
         return checking;
     }
 
-    private int direchoose(int[] enemy, int[] player, int i){
+    private int direchoose(int[] enemy, int[] player, int i, int smart){
         List<List<int>> queue = new List<List<int>> {new List<int>{enemy[0],enemy[1],4}};
-        int[] goalcords = new int[2] { (int)goal.position.x/-2, (int)goal.position.y/-2};
+        int[] goalcords = new int[2]{0,0};
+        if(Math.Sqrt((player[0] - enemy[0]) * (player[0] - enemy[0]) + (player[1] - enemy[1]) * (player[1] - enemy[1])) <= 5){
+            if(smart>=3){
+                goalcords = new int[2] { (int)goal.position.x/-2, (int)goal.position.y/-2};
+            }
+            else{
+                goalcords = new int[2] { (int)transform.position.x/-2, (int)transform.position.y/-2};
+            }
+        }
+        else{
+            goalcords=Patrol(enemy,i);
+        }
         bool searching = true;
         int increment = 0;
         while (searching){
-            if ((goalcords[0] == queue[increment][0]) & (goalcords[1] == queue[increment][1]))
+            if(smart<=2)
+            {
+                if (((int)goal.position.x/-2 == queue[increment][0]) && ((int)goal.position.y/-2 == queue[increment][1]))
+                {
+                    searching = false;
+                    return queue[increment][2];
+                }
+            }
+            if ((goalcords[0] == queue[increment][0]) && (goalcords[1] == queue[increment][1]))
             {
                 searching = false;
                 return queue[increment][2];
@@ -1223,7 +1554,7 @@ public class GameManager : MonoBehaviour{
                 }
             }
         }
-        return 4;
+        return randomdire(enemy);
     }
 
     private int randomdire(int[] enemy){
@@ -1251,29 +1582,34 @@ public class GameManager : MonoBehaviour{
         return direoptions[rando.Next(0, direoptions.Count)];
     }
 
-    private void RandomMove(int[] enemylocation,int i){
+    private void RandomMove(int[] enemylocation, int[] playerlocation, int i){
         int dire = randomdire(enemylocation);
-        switch(dire){
-            case 0:
-                enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(0f, speed*-0.5f, 0f);
-                break;
-            case 1:
-                enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(speed*-0.5f, 0f, 0f);
-                break;
-            case 2:
-                enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(0f, speed*0.5f, 0f);
-                break;
-            case 3:
-                enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(speed*0.5f, 0f, 0f);
-                break;
-            case 4:
-                //Nowhere to move
-                break;
+        if ((enemylocation[0] == (int)goal.position.x/-2) && (enemylocation[1] == (int)goal.position.y/-2)){
+
+        }
+        else{
+            switch(dire){
+                case 0:
+                    enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(0f, speed*-0.5f, 0f);
+                    break;
+                case 1:
+                    enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(speed*-0.5f, 0f, 0f);
+                    break;
+                case 2:
+                    enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(0f, speed*0.5f, 0f);
+                    break;
+                case 3:
+                    enemies[i].GetComponent<Character>().goal.transform.position = enemies[i].GetComponent<Character>().goal.transform.position - new Vector3(speed*0.5f, 0f, 0f);
+                    break;
+                case 4:
+                    //Nowhere to move
+                    break;
+            }
         }
     }
 
-    private void ChaseMove(int[] enemylocation, int[] playerlocation,int i){
-        int dire=direchoose(enemylocation, playerlocation, i);
+    private void ChaseMove(int[] enemylocation, int[] playerlocation,int i, int smart){
+        int dire=direchoose(enemylocation, playerlocation, i,smart);
         switch(dire){
             case 0:
                 if(nearbyneighbour(enemylocation[0],enemylocation[1]+1)){
@@ -1296,9 +1632,31 @@ public class GameManager : MonoBehaviour{
                 }
                 break;
             case 4:
-                //RUN CODE HERE FOR INITIALISING COMBAT
                 break;
         }
+    }
+
+    private int GetSmart(int i){
+        switch (enemies[i].GetComponent<Character>().charname){
+            //Bandit
+            case "Bandit":
+                return 3;
+            //Orc
+            case "Orc":
+                return 2;
+            //Goblin
+            case "Goblin":
+                return 2;
+            //Slime
+            case "Slime":
+                return 0;
+            //Golem
+            case "Golem":
+                return 1;
+            case "Wizard":
+                return 4;
+        }
+        return 0;
     }
 
     private void EnemyMove(){
@@ -1306,13 +1664,28 @@ public class GameManager : MonoBehaviour{
             for (int i=0;i<enemies.Count;i++){
                 int[] enemylocation = new int[2]{(int)(enemies[i].transform.position.x-tilemap.transform.position.x)/2,(int)(enemies[i].transform.position.y-tilemap.transform.position.y)/2};
                 int[] playerlocation = PlayerLocate();
-                if (Math.Sqrt((playerlocation[0] - enemylocation[0]) * (playerlocation[0] - enemylocation[0]) + (playerlocation[1] - enemylocation[1]) * (playerlocation[1] - enemylocation[1])) <= 5)
-                {
-                    ChaseMove(enemylocation,playerlocation,i);
+                int smart = GetSmart(i);
+                if(smart==4){
+                    ChaseMove(enemylocation,playerlocation,i,smart);
                 }
-                else
-                {
-                    RandomMove(enemylocation,i);
+                if(smart==2 || smart==3){
+                    if (Math.Sqrt((playerlocation[0] - enemylocation[0]) * (playerlocation[0] - enemylocation[0]) + (playerlocation[1] - enemylocation[1]) * (playerlocation[1] - enemylocation[1])) <= 5)
+                    {
+                        ChaseMove(enemylocation,playerlocation,i,smart);
+                    }
+                    else
+                    {
+                        RandomMove(enemylocation,playerlocation,i);
+                    }
+                }
+                if(smart==1){
+                    if (Math.Sqrt((playerlocation[0] - enemylocation[0]) * (playerlocation[0] - enemylocation[0]) + (playerlocation[1] - enemylocation[1]) * (playerlocation[1] - enemylocation[1])) <= 5)
+                    {
+                        ChaseMove(enemylocation,playerlocation,i,smart);
+                    }
+                }
+                if(smart==0){
+                    RandomMove(enemylocation,playerlocation,i);
                 }
             }
         }
@@ -1325,6 +1698,7 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+
     private void Kill(int i){
         if(bossfight){
             Destroy(NPCs[i].GetComponent<Character>().goal);
@@ -1338,7 +1712,8 @@ public class GameManager : MonoBehaviour{
             EnemySpawn();
         }
     }
-    private void CheckCaught(){
+
+    private bool CheckCaught(){
         if(enemies!=null){
             int[] playerlocation = {(int)goal.transform.position[0]/-2, (int)goal.transform.position[1]/-2};
             for (int i=0;i<enemies.Count;i++){
@@ -1347,9 +1722,11 @@ public class GameManager : MonoBehaviour{
                     combatenemy=enemies[i];
                     combatenemyindex=i;
                     combatpopup();
+                    return true;
                 }
             }
         }
+        return false;
     }
 
     public void CombatStart(){
@@ -1422,6 +1799,7 @@ public class GameManager : MonoBehaviour{
     }
 
     private void endcombat(bool success){
+        UIstats();
         Random rando = new Random();
         exppanel.SetActive(true);
         donebutton.SetActive(true);
@@ -1463,6 +1841,7 @@ public class GameManager : MonoBehaviour{
         }
     }
     public void CombatResult(){
+        UIstats();
         if(bossfight){
             popped=false;
             Kill(interactindex);
@@ -1596,12 +1975,7 @@ public class GameManager : MonoBehaviour{
                 defence=defence*2;
                 combatenemy.GetComponent<Character>().statuses.Remove("Defending");
             }
-            if(strength>defence/2){
-                damage=(strength-defence/2);
-            }
-            if(strength>defence){
-                damage=(strength-defence)*4;
-            }
+            damage = (int)(((2*Player.GetComponent<Character>().level)/3+2)*40*strength/defence)/10;
             combatenemy.GetComponent<Character>().Harm(damage);
             combattext.text=("You attacked the "+combatenemy.GetComponent<Character>().charname+" for "+damage+" damage!");
         }
@@ -1612,12 +1986,7 @@ public class GameManager : MonoBehaviour{
                 defence=defence*2;
                 Player.GetComponent<Character>().statuses.Remove("Defending");
             }
-            if(strength>defence/2){
-                damage=(strength-defence/2);
-            }
-            if(strength>defence){
-                damage=(strength-defence)*4;
-            }
+            damage = (int)(((2*combatenemy.GetComponent<Character>().level)/3+2)*40*strength/defence)/10;
             
             Player.GetComponent<Character>().Harm(damage);
             combattext.text=("You were attacked by the "+combatenemy.GetComponent<Character>().charname+" for "+damage+" damage!");
@@ -1678,11 +2047,18 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    private void UIstats(){
+        UInametext.text = (Player.GetComponent<Character>().charname+" - LVL "+Player.GetComponent<Character>().level);
+        UIHPtext.text = ("Health: "+Player.GetComponent<Character>().currhealth+"/"+Player.GetComponent<Character>().maxhealth);
+        UImanatext.text = ("Mana: "+Player.GetComponent<Character>().currmana+"/"+Player.GetComponent<Character>().maxmana);
+    }
+
     public void UpdateStats(string Option){
         statpoints--;
         Player.GetComponent<Character>().ChangeStat(Option,1);
         UpdateStatsView();
     }
+
     private void UpdateStatsView(){
         exptext.text=("exp gained: "+expgained+"\nlevel up\nusable points: "+statpoints);
         strtext.text=("strength: "+Player.GetComponent<Character>().strength);
@@ -1770,6 +2146,7 @@ public class GameManager : MonoBehaviour{
         goal.SetParent(null);
         Player.GetComponent<Character>().initCharacter(MainMenu.username,1,10,10,10,10,10,10,0);
         bossfight=false;
+        UIstats();
     }
 
     void Update() {
@@ -1778,49 +2155,54 @@ public class GameManager : MonoBehaviour{
         EnemyMoving();
         if(!popped){
             if(Vector3.Distance(transform.position,goal.position) == 0f){
-                if(Input.GetAxisRaw("Horizontal")!=0f){
-                    if(Input.GetAxisRaw("Horizontal")==1f){
-                        //Moving right
-                        if(MoveAllow(1,PlayerLocate())){
-                            goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
+                if(tileactive){
+                    if(Input.GetAxisRaw("Horizontal")!=0f){
+                        if(Input.GetAxisRaw("Horizontal")==1f){
+                            //Moving right
                             direction=1;
-                            EnemyMove();
-                            LandOnLadder();
+                            if(MoveAllow(1,PlayerLocate())){
+                                tileactive=false;
+                                goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
+                                EnemyMove();
+                            }
                         }
-                    }
-                    if(Input.GetAxisRaw("Horizontal")==-1f){
-                        //Moving left
-                        if(MoveAllow(3,PlayerLocate())){
-                            goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
+                        if(Input.GetAxisRaw("Horizontal")==-1f){
+                            //Moving left
                             direction=3;
-                            EnemyMove();
-                            LandOnLadder();
+                            if(MoveAllow(3,PlayerLocate())){
+                                tileactive=false;
+                                goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
+                                EnemyMove();
+                            }
                         }
                     }
-                    CheckCaught();
-                }
-                else if(Input.GetAxisRaw("Vertical")!=0f){
-                    if(Input.GetAxisRaw("Vertical")==1f){
-                        //Moving up
-                        if(MoveAllow(0,PlayerLocate())){
-                            goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
+                    else if(Input.GetAxisRaw("Vertical")!=0f){
+                        if(Input.GetAxisRaw("Vertical")==1f){
+                            //Moving up
                             direction=0;
-                            EnemyMove();
-                            LandOnLadder();
+                            if(MoveAllow(0,PlayerLocate())){
+                                tileactive=false;
+                                goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
+                                EnemyMove();
+                            }
                         }
-                    }
-                    if(Input.GetAxisRaw("Vertical")==-1f){
-                        //Moving down
-                        if(MoveAllow(2,PlayerLocate())){
-                            goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
+                        if(Input.GetAxisRaw("Vertical")==-1f){
+                            //Moving down
                             direction=2;
-                            EnemyMove();
-                            LandOnLadder();
+                            if(MoveAllow(2,PlayerLocate())){
+                                tileactive=false;
+                                goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
+                                EnemyMove();
+                            }
                         }
                     }
-                    CheckCaught();
                 }
-                //This will be the section for player interaction
+                else{
+                    tileactive=true;
+                    CheckCaught();
+                    LandOnTile();
+                }
+                //Player interacts with the object directly in front of them
                 if (Input.GetKeyDown(KeyCode.E))
                 {
                     int[] intercords = PlayerLocate();
@@ -1838,7 +2220,6 @@ public class GameManager : MonoBehaviour{
                             Interact(new int[2]{intercords[0]-1,intercords[1]});
                             break;
                     }
-                    //Interaction
                 }
             }
         }

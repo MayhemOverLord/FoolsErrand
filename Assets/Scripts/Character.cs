@@ -19,6 +19,7 @@ public class Character : MonoBehaviour {
     public int wisdom;
     public int direction;
     public int spriteoffset;
+    public List<List<int>> roomvisiting;
     public List<string> statuses;
     public GameObject goal;
     public Sprite[] images;

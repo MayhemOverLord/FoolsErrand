@@ -160,6 +160,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: ec901e38dddba67499ee1fdf3869b63e, type: 3}
   - {fileID: 21300000, guid: 683926a01e5786744ad09886a542ca5e, type: 3}
   - {fileID: 21300000, guid: 2656042fca494774886d744752890525, type: 3}
+  - {fileID: 21300000, guid: 75e92ddb9aa7ffc419ebe2d1252737b4, type: 3}
 --- !u!114 &639740879505541671
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -175,3 +176,4 @@ MonoBehaviour:
   Dialogue: []
   PostDialogue: 
   Type: 
+  DialogueSteps: 0

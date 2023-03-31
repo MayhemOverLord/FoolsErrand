@@ -225,7 +225,7 @@ public class GameManager : MonoBehaviour{
             laddercord = new int[2]{gridsize,gridsize};
             NPCs.Add(Instantiate(NPCprefab, new Vector3(0,0,0), Quaternion.identity));
             NPCs[NPCs.Count-1].transform.SetParent(tilemap.transform);
-            NPCs[NPCs.Count-1].transform.position =  new Vector3(2*4+tilemap.transform.position.x,2*4+tilemap.transform.position.y,0);
+            NPCs[NPCs.Count-1].transform.position =  new Vector3(2*4+tilemap.transform.position.x,2*4+tilemap.transform.position.y,-1);
             EnemyStats(NPCs[NPCs.Count-1],true);
             NPCs[NPCs.Count-1].GetComponent<NPC>().initNPC(new List<string>{"BOSS FIGHT TIME TINY HUMAN"},"Fight","BOSS", new int[2]{4,4});
             NPCs[NPCs.Count-1].transform.localScale *= 3;
@@ -382,7 +382,7 @@ public class GameManager : MonoBehaviour{
             }
             enemies.Add(Instantiate(enemyprefab, new Vector3(0,0,0), Quaternion.identity));
             enemies[enemies.Count-1].transform.SetParent(tilemap.transform);
-            enemies[enemies.Count-1].transform.position =  new Vector3(2*enemylocate[0]+tilemap.transform.position.x,2*enemylocate[1]+tilemap.transform.position.y,0);
+            enemies[enemies.Count-1].transform.position =  new Vector3(2*enemylocate[0]+tilemap.transform.position.x,2*enemylocate[1]+tilemap.transform.position.y,-3);
             EnemyStats(enemies[enemies.Count-1],false);
             enemies[enemies.Count-1].GetComponent<Character>().goal.transform.SetParent(tilemap.transform);
             if(enemies.Count<enemycount){
@@ -392,12 +392,15 @@ public class GameManager : MonoBehaviour{
     }
     private void EnemyStats(GameObject enemy, bool boss){
         Random rando = new Random();
-        int monsternum=rando.Next(0,5);
+        int monsternum=rando.Next(0,6);
         string name="Enemy";
         double[] stats = new double[6];
         double modifier = (depth+wins*bosslevel);
         if(boss){
             modifier=modifier*1.2;
+            if(wins==0){
+                monsternum=6;
+            }
         }
         switch(monsternum){
             //Bandit
@@ -424,7 +427,11 @@ public class GameManager : MonoBehaviour{
             case 4:
                 name = "Golem";
                 stats = new double[7]{4+modifier*0.8,3+modifier*0.6,10+modifier*2,10+modifier*2,0,3+modifier*0.6,6};
-                break;    
+                break;   
+            case 5:
+                name = "Wizard";
+                stats = new double[7]{5+modifier,4+modifier*0.8,8+modifier*1.6,6+modifier*1.2,5+modifier,5+modifier,7};
+                break; 
         }
         enemy.GetComponent<Character>().initCharacter(name,depth,(int)stats[0],(int)stats[1],(int)stats[2],(int)stats[3],(int)stats[4],(int)stats[5],(int)stats[6]);
         //name, strength, agility, constitution, defence, intelligence, wisdom, spriteoffset
@@ -1120,6 +1127,7 @@ public class GameManager : MonoBehaviour{
         popuptext.text=("You have been attacked by a "+combatenemy.GetComponent<Character>().charname+"!");
         popupwindow.SetActive(true);
         battleops.SetActive(true);
+        nextdiabutton.SetActive(false);
         descendops.SetActive(false);
         popupops.SetActive(false);
     }
@@ -1318,10 +1326,17 @@ public class GameManager : MonoBehaviour{
         }
     }
     private void Kill(int i){
-        Destroy(enemies[i].GetComponent<Character>().goal);
-        Destroy(enemies[i]);
-        enemies.Remove(enemies[i]);
-        EnemySpawn();
+        if(bossfight){
+            Destroy(NPCs[i].GetComponent<Character>().goal);
+            Destroy(NPCs[i]);
+            NPCs.Remove(NPCs[i]);
+        }
+        else{
+            Destroy(enemies[i].GetComponent<Character>().goal);
+            Destroy(enemies[i]);
+            enemies.Remove(enemies[i]);
+            EnemySpawn();
+        }
     }
     private void CheckCaught(){
         if(enemies!=null){
@@ -1339,6 +1354,7 @@ public class GameManager : MonoBehaviour{
 
     public void CombatStart(){
         fled=false;
+        battleops.SetActive(false);
         playericon.GetComponent<Image>().sprite=Player.GetComponent<Character>().images[Player.GetComponent<Character>().spriteoffset];
         enemyicon.GetComponent<Image>().sprite=combatenemy.GetComponent<Character>().images[combatenemy.GetComponent<Character>().spriteoffset];
         popupwindow.SetActive(false);
@@ -1449,6 +1465,7 @@ public class GameManager : MonoBehaviour{
     public void CombatResult(){
         if(bossfight){
             popped=false;
+            Kill(interactindex);
             exppanel.SetActive(false);
             GameOver();
         }
@@ -1488,32 +1505,73 @@ public class GameManager : MonoBehaviour{
         Random rando = new Random();
         int chooseattack=0;
         int choosedefend=0;
-        switch(combatenemy.GetComponent<Character>().charname){
-            case "Bandit":
-                //50% attack, 45% defend, 5% flee
-                chooseattack=50;
-                choosedefend=95;
-                break;
-            case "Orc":
-                //90% attack, 10% defend, 0% flee
-                chooseattack=90;
-                choosedefend=100;
-                break;
-            case "Goblin":
-                //70% attack, 20% defend, 10% flee
-                chooseattack=70;
-                choosedefend=90;
-                break;
-            case "Slime":
-                //60% attack, 15% defend, 25% flee
-                chooseattack=60;
-                choosedefend=75;
-                break;
-            case "Golem":
-                //25% attack, 70% defend, 5% flee
-                chooseattack=25;
-                choosedefend=95;
-                break;
+        if(depth!=bosslevel){
+            switch(combatenemy.GetComponent<Character>().charname){
+                case "Bandit":
+                    //50% attack, 45% defend, 5% flee
+                    chooseattack=50;
+                    choosedefend=95;
+                    break;
+                case "Orc":
+                    //90% attack, 10% defend, 0% flee
+                    chooseattack=90;
+                    choosedefend=100;
+                    break;
+                case "Goblin":
+                    //70% attack, 20% defend, 10% flee
+                    chooseattack=70;
+                    choosedefend=90;
+                    break;
+                case "Slime":
+                    //60% attack, 15% defend, 25% flee
+                    chooseattack=60;
+                    choosedefend=75;
+                    break;
+                case "Golem":
+                    //25% attack, 70% defend, 5% flee
+                    chooseattack=25;
+                    choosedefend=95;
+                    break;
+                case "Wizard":
+                    //100% attack
+                    chooseattack=80;
+                    choosedefend=100;
+                    break;
+            }
+        }
+        else{
+            switch(combatenemy.GetComponent<Character>().charname){
+                case "Bandit":
+                    //55% attack, 45% defend
+                    chooseattack=55;
+                    choosedefend=100;
+                    break;
+                case "Orc":
+                    //90% attack, 10% defend
+                    chooseattack=90;
+                    choosedefend=100;
+                    break;
+                case "Goblin":
+                    //75% attack, 25% defend
+                    chooseattack=75;
+                    choosedefend=100;
+                    break;
+                case "Slime":
+                    //80% attack, 20% defend
+                    chooseattack=80;
+                    choosedefend=100;
+                    break;
+                case "Golem":
+                    //30% attack, 70% defend
+                    chooseattack=30;
+                    choosedefend=100;
+                    break;
+                case "Wizard":
+                    //100% attack
+                    chooseattack=100;
+                    choosedefend=101;
+                    break;
+            }
         }
         int roll = rando.Next(1,101);
         if(roll<=chooseattack){
@@ -1599,7 +1657,7 @@ public class GameManager : MonoBehaviour{
         if(TurnCheck()==1){
             //Player Turn
             chance=(int)((playspeed/enemspeed)*100);
-            if(roll<=chance){
+            if((roll<=chance) && !(bossfight)){
                 combattext.text=("You have successfully fled from combat!");
                 fled=true;
             }

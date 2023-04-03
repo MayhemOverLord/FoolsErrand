@@ -161,16 +161,32 @@ public class GameManager : MonoBehaviour{
     public TextMeshProUGUI playername;
     public TextMeshProUGUI enemyname;
     public TextMeshProUGUI playerhealth;
+    public TextMeshProUGUI playermana;
     public TextMeshProUGUI enemyhealth;
+    public TextMeshProUGUI enemymana;
     public GameObject playerhealthbar;
+    public GameObject playermanabar;
     public GameObject enemyhealthbar;
+    public GameObject enemymanabar;
     private List<int> turnqueue;
     private int turns;
     private bool playerfirst;
     private int currentturn;
     private bool fled=false;
+    private bool turneffect=false;
     private int expgained=0;
     public int statpoints=0;
+    private int tempspell;
+    public GameObject spellviewpanel;
+    public GameObject spellcastbutton;
+    public TextMeshProUGUI spelldescription;
+    private List<List<string>> spelllist = new List<List<string>>{
+        new List<string>{"Heal Wounds","50","Heals the user by restoring some lost health"},
+        new List<string>{"Breathe Fire","40","Applies burning to enemy, dealing damage each enemy turn"},
+        new List<string>{"Arcane Knife","25","Heals the user by restoring some lost health"},
+        new List<string>{"Power Charge","35","Heals the user by restoring some lost health"},
+        new List<string>{"Wild Surge","45","Heals the user by restoring some lost health"}
+    };
 
     public TextMeshProUGUI exptext;
     public GameObject exppanel;
@@ -1352,13 +1368,16 @@ public class GameManager : MonoBehaviour{
     private void LandOnTile(){
         int [] goallocate = new int[2]{(int)goal.position.x/-2,(int)goal.position.y/-2};
         //Ladder
-        if(gridstore[goallocate[1],goallocate[0]]==45){
-            popped=true;
-            popuptext.text="You have found a ladder down to the next layer! Would you like to descend?";
-            popupwindow.SetActive(true);
-            descendops.SetActive(true);
-            popupops.SetActive(false);
-            battleops.SetActive(false);
+        bool caught = CheckCaught();
+        if(!caught){
+            if(gridstore[goallocate[1],goallocate[0]]==45){
+                popped=true;
+                popuptext.text="You have found a ladder down to the next layer! Would you like to descend?";
+                popupwindow.SetActive(true);
+                descendops.SetActive(true);
+                popupops.SetActive(false);
+                battleops.SetActive(false);
+            }
         }
         //Magma
         if(gridstore[goallocate[1],goallocate[0]]==46){
@@ -1367,7 +1386,6 @@ public class GameManager : MonoBehaviour{
         }
         //Ice
         if(gridstore[goallocate[1],goallocate[0]]==47){
-            bool caught=CheckCaught();
             if (!caught){
                 switch(direction){
                     case 0:
@@ -1753,6 +1771,7 @@ public class GameManager : MonoBehaviour{
         }
         //Calculate the turn order
     }
+
     private int TurnCheck(){
         if(currentturn%(turns+1)==0){
             if(playerfirst){
@@ -1775,6 +1794,62 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+
+    private void DoEffect(){
+        turneffect=true;
+        if(TurnCheck()==1){
+            int burningval=CheckStatus(false,"Burning");
+            if(burningval!=-1){
+                Player.GetComponent<Character>().Harm(5);
+                Player.GetComponent<Character>().statuses[burningval][2]=(int.Parse(Player.GetComponent<Character>().statuses[burningval][2])-1).ToString();
+                if(Player.GetComponent<Character>().statuses[burningval][2]=="0"){
+                    Player.GetComponent<Character>().statuses.RemoveAt(burningval);
+                    combattext.text=("You took 5 damage from your burns! Your burn has ended!");
+                }
+                else{
+                    combattext.text=("You took 5 damage from your burns!");
+                }
+                combattextpanel.SetActive(true);
+            }
+            int chargedval=CheckStatus(false,"Charged");
+            if(chargedval!=-1){
+                Player.GetComponent<Character>().statuses[chargedval][2]=(int.Parse(Player.GetComponent<Character>().statuses[chargedval][2])-1).ToString();
+                if(Player.GetComponent<Character>().statuses[chargedval][2]=="0"){
+                    Player.GetComponent<Character>().statuses.RemoveAt(chargedval);
+                }
+            }
+            if(chargedval+burningval==-2){
+                NextTurn();
+            }
+        }
+        else{
+            int burningval=CheckStatus(true,"Burning");
+            if(burningval!=-1){
+                combatenemy.GetComponent<Character>().Harm(5);
+                combatenemy.GetComponent<Character>().statuses[burningval][2]=(int.Parse(combatenemy.GetComponent<Character>().statuses[burningval][2])-1).ToString();
+                if(combatenemy.GetComponent<Character>().statuses[burningval][2]=="0"){
+                    combatenemy.GetComponent<Character>().statuses.RemoveAt(burningval);
+                    combattext.text=(combatenemy.GetComponent<Character>().charname+" took 5 damage from their burns! Their burn has ended!");
+                }
+                else{
+                    combattext.text=(combatenemy.GetComponent<Character>().charname+" took 5 damage from their burns!");
+                    
+                }
+                combattextpanel.SetActive(true);
+            }
+            int chargedval=CheckStatus(true,"Charged");
+            if(chargedval!=-1){
+                combatenemy.GetComponent<Character>().statuses[chargedval][2]=(int.Parse(combatenemy.GetComponent<Character>().statuses[chargedval][2])-1).ToString();
+                if(combatenemy.GetComponent<Character>().statuses[chargedval][2]=="0"){
+                    combatenemy.GetComponent<Character>().statuses.RemoveAt(chargedval);
+                }
+            }
+            if(chargedval+burningval==-2){
+                NextTurn();
+            }
+        }
+    }
+
     public void NextTurn(){
         //Checks if secondary entity turn
         combattextpanel.SetActive(false);
@@ -1788,12 +1863,23 @@ public class GameManager : MonoBehaviour{
             endcombat(true);
         }
         if((!fled) & (Player.GetComponent<Character>().currhealth!=0) & (combatenemy.GetComponent<Character>().currhealth!=0)){
-            currentturn++;
-            if(TurnCheck()==1){
-                PlayerTurn();
+            if(turneffect){
+                currentturn++;
+                if(TurnCheck()==1){
+                    Player.GetComponent<Character>().ManaRegen();
+                    CombatUI();
+                    PlayerTurn();
+                    turneffect=false;
+                }
+                else{
+                    combatenemy.GetComponent<Character>().ManaRegen();
+                    CombatUI();
+                    EnemyTurn();
+                    turneffect=false;
+                }
             }
             else{
-                EnemyTurn();
+                DoEffect();
             }
         }
     }
@@ -1966,27 +2052,93 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    private int CheckStatus(bool playerenemy,string status){
+        int found=-1;
+        if(playerenemy){//Enemy
+            for(int i=0;i<combatenemy.GetComponent<Character>().statuses.Count;i++){
+                if(combatenemy.GetComponent<Character>().statuses[i][0]==status){
+                    found=i;
+                }
+            }
+        }
+        else{//Player
+            for(int i=0;i<Player.GetComponent<Character>().statuses.Count;i++){
+                if(Player.GetComponent<Character>().statuses[i][0]==status){
+                    found=i;
+                }
+            }
+        }
+        return found;
+    }
+    private void SpellAttack(int power, string spellname){
+        int damage = 0;
+        if(TurnCheck()==1){
+            int defence=combatenemy.GetComponent<Character>().defence;
+            int attackstat=Player.GetComponent<Character>().intelligence;
+            int chargefound=CheckStatus(false,"Charged");
+            if(chargefound!=-1){
+                attackstat = (int)(attackstat*1.2);
+            }
+            int defendfound=CheckStatus(false,"Defending");
+            if(defendfound!=-1){
+                defence=defence*2;
+                combatenemy.GetComponent<Character>().statuses.RemoveAt(defendfound);
+            }
+            damage = (int)(((2*Player.GetComponent<Character>().level)/3+2)*power*attackstat/defence)/10;
+            combatenemy.GetComponent<Character>().Harm(damage);
+            combattext.text=("Your "+spellname+" hit the " +combatenemy.GetComponent<Character>().charname+" for "+damage+" damage!");
+        }
+        else{
+            int defence=Player.GetComponent<Character>().defence;
+            int attackstat=combatenemy.GetComponent<Character>().intelligence;
+            int chargefound=CheckStatus(true,"Charged");
+            if(chargefound!=-1){
+                attackstat = (int)(attackstat*1.2);
+            }
+            int defendfound=CheckStatus(true,"Defending");
+            if(defendfound!=-1){
+                defence=defence*2;
+                Player.GetComponent<Character>().statuses.RemoveAt(defendfound);
+            }
+            damage = (int)(((2*combatenemy.GetComponent<Character>().level)/3+2)*power*attackstat/defence)/10;
+            
+            Player.GetComponent<Character>().Harm(damage);
+            combattext.text=("You were attacked by the "+combatenemy.GetComponent<Character>().charname+"'s "+spellname+" for "+damage+" damage!");
+        }
+        combattextpanel.SetActive(true);
+        CombatUI();
+    }
     public void Attack(){
         int damage = 0;
         if(TurnCheck()==1){
             int defence=combatenemy.GetComponent<Character>().defence;
-            int strength=Player.GetComponent<Character>().strength;
-            if(combatenemy.GetComponent<Character>().statuses.Contains("Defending")){
-                defence=defence*2;
-                combatenemy.GetComponent<Character>().statuses.Remove("Defending");
+            int attackstat=Player.GetComponent<Character>().strength;
+            int chargefound=CheckStatus(false,"Charged");
+            if(chargefound!=-1){
+                attackstat = (int)(attackstat*1.2);
             }
-            damage = (int)(((2*Player.GetComponent<Character>().level)/3+2)*40*strength/defence)/10;
+            int defendfound=CheckStatus(false,"Defending");
+            if(defendfound!=-1){
+                defence=defence*2;
+                combatenemy.GetComponent<Character>().statuses.RemoveAt(defendfound);
+            }
+            damage = (int)(((2*Player.GetComponent<Character>().level)/3+2)*40*attackstat/defence)/10;
             combatenemy.GetComponent<Character>().Harm(damage);
             combattext.text=("You attacked the "+combatenemy.GetComponent<Character>().charname+" for "+damage+" damage!");
         }
         else{
             int defence=Player.GetComponent<Character>().defence;
-            int strength=combatenemy.GetComponent<Character>().strength;
-            if(Player.GetComponent<Character>().statuses.Contains("Defending")){
-                defence=defence*2;
-                Player.GetComponent<Character>().statuses.Remove("Defending");
+            int attackstat=combatenemy.GetComponent<Character>().strength;
+            int chargefound=CheckStatus(true,"Charged");
+            if(chargefound!=-1){
+                attackstat = (int)(attackstat*1.2);
             }
-            damage = (int)(((2*combatenemy.GetComponent<Character>().level)/3+2)*40*strength/defence)/10;
+            int defendfound=CheckStatus(true,"Defending");
+            if(defendfound!=-1){
+                defence=defence*2;
+                Player.GetComponent<Character>().statuses.RemoveAt(defendfound);
+            }
+            damage = (int)(((2*combatenemy.GetComponent<Character>().level)/3+2)*40*attackstat/defence)/10;
             
             Player.GetComponent<Character>().Harm(damage);
             combattext.text=("You were attacked by the "+combatenemy.GetComponent<Character>().charname+" for "+damage+" damage!");
@@ -1997,23 +2149,99 @@ public class GameManager : MonoBehaviour{
 
     public void Defend(){
         if(TurnCheck()==1){
-            Player.GetComponent<Character>().statuses.Add("Defending");
+            Player.GetComponent<Character>().statuses.Add(new List<string>{"Defending","Attack","1"});
             combattext.text=("You have defended yourself against an attack!");
         }
         else{
-            combatenemy.GetComponent<Character>().statuses.Add("Defending");
+            combatenemy.GetComponent<Character>().statuses.Add(new List<string>{"Defending","Attack","1"});
             combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" has defended itself against an attack!");
         }
         combattextpanel.SetActive(true);
     }
 
-    public void Spells(){
-        if(TurnCheck()==1){
-            //
+    public void Spellview(int spellchoice){
+        spellviewpanel.SetActive(true);
+        tempspell=spellchoice;
+        spelldescription.text = ("Spell: "+spelllist[tempspell][0]+"\nCost: "+spelllist[tempspell][1]+" mana\n" +spelllist[tempspell][2]);
+        if(Player.GetComponent<Character>().currmana>=int.Parse(spelllist[tempspell][1])){
+            spellcastbutton.SetActive(true);
         }
         else{
-
+            spellcastbutton.SetActive(false);
         }
+    }
+
+    public void Spells(){
+        Random rando = new Random();
+        if(TurnCheck()==1){
+            Player.GetComponent<Character>().currmana = Player.GetComponent<Character>().currmana - int.Parse(spelllist[tempspell][1]);
+            switch(tempspell){
+                case 0: //Heal Wounds
+                    int healing = 3*Player.GetComponent<Character>().intelligence;
+                    Player.GetComponent<Character>().Heal(healing);
+                    combattext.text=("You have healed yourself for "+healing+" health!");
+                    combattextpanel.SetActive(true);
+                    break;
+                case 1: //Breathe Fire
+                    combatenemy.GetComponent<Character>().statuses.Add(new List<string>{"Burning","Turns",rando.Next(2,6).ToString()});
+                    combattext.text=("Your fire breath set the "+combatenemy.GetComponent<Character>().charname+" on fire!");
+                    combattextpanel.SetActive(true);
+                    break;
+                case 2: //Arcane Knife
+                    SpellAttack(40,"Arcane Knife");
+                    break;
+                case 3: //Power Charge
+                    Player.GetComponent<Character>().statuses.Add(new List<string>{"Charged","Turns","10"});
+                    combattext.text=("Your power charge fills you with fighting energy!");
+                    combattextpanel.SetActive(true);
+                    break;
+                case 4: //Wild Surge
+                    int chance = rando.Next(1,101);
+                    if(chance<=33){
+                        SpellAttack(120,"Wild Surge");
+                    }
+                    else{
+                        combattext.text=("Your attempted wild surge spell failed!");
+                        combattextpanel.SetActive(true);
+                    }
+                    break;
+            }
+        }
+        else{
+            combatenemy.GetComponent<Character>().currmana = combatenemy.GetComponent<Character>().currmana - int.Parse(spelllist[tempspell][1]);
+            switch(tempspell){
+                case 0: //Heal Wounds
+                    int healing = 3*combatenemy.GetComponent<Character>().intelligence;
+                    combatenemy.GetComponent<Character>().Heal(healing);
+                    combattext.text=(combatenemy.GetComponent<Character>().charname+" healed themself for "+healing+" health!");
+                    combattextpanel.SetActive(true);
+                    break;
+                case 1: //Breathe Fire
+                    Player.GetComponent<Character>().statuses.Add(new List<string>{"Burning","Turns",rando.Next(2,6).ToString()});
+                    combattext.text=("The "+combatenemy.GetComponent<Character>().charname+"'s fire breath set you on fire!");
+                    combattextpanel.SetActive(true);
+                    break;
+                case 2: //Arcane Knife
+                    SpellAttack(40,"Arcane Knife");
+                    break;
+                case 3: //Power Charge
+                    combatenemy.GetComponent<Character>().statuses.Add(new List<string>{"Charged","Turns","10"});
+                    combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" used power charge to strengthen themself!");
+                    combattextpanel.SetActive(true);
+                    break;
+                case 4: //Wild Surge
+                    int chance = rando.Next(1,101);
+                    if(chance<=33){
+                        SpellAttack(120,"Wild Surge");
+                    }
+                    else{
+                        combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" attempted to use wild surge but failed!");
+                        combattextpanel.SetActive(true);
+                    }
+                    break;
+            }
+        }
+        CombatUI();
     }
 
     public void Flee(){
@@ -2081,19 +2309,33 @@ public class GameManager : MonoBehaviour{
 
     private void CombatUI(){
         playerhealth.text=(Player.GetComponent<Character>().currhealth+"/"+Player.GetComponent<Character>().maxhealth);
+        playermana.text=(Player.GetComponent<Character>().currmana+"/"+Player.GetComponent<Character>().maxmana);
         enemyhealth.text=(combatenemy.GetComponent<Character>().currhealth+"/"+combatenemy.GetComponent<Character>().maxhealth);
-        int playerratio=(int)(Player.GetComponent<Character>().currhealth/Player.GetComponent<Character>().maxhealth)*100;
-        int enemyratio=(int)(combatenemy.GetComponent<Character>().currhealth/combatenemy.GetComponent<Character>().maxhealth)*100;
-        float playerdiff=playerhealthbar.GetComponent<RectTransform>().rect.width;
-        float enemydiff=enemyhealthbar.GetComponent<RectTransform>().rect.width;
-        playerhealthbar.GetComponent<RectTransform>().sizeDelta = new Vector2 (playerratio*3, 50);
-        enemyhealthbar.GetComponent<RectTransform>().sizeDelta = new Vector2 (enemyratio*3, 50);
-        //playerdiff=(playerdiff-playerhealthbar.GetComponent<RectTransform>().rect.width)/3;
-        //enemydiff=(enemydiff-enemyhealthbar.GetComponent<RectTransform>().rect.width)/3;
-        //playerhealthbar.transform.position = playerhealthbar.transform.position - new Vector3(playerhealthbar.transform.position.x-playerdiff, 0, 0);
-        //enemyhealthbar.transform.position = enemyhealthbar.transform.position - new Vector3(enemyhealthbar.transform.position.x-enemydiff, 0, 0);
-        //playerhealthbar.transform.position = new Vector3(-400+playerratio*1.5f, playerhealthbar.transform.position.y, 0);
-        //enemyhealthbar.transform.position = new Vector3(100+enemyratio*1.5f, enemyhealthbar.transform.position.y, 0);
+        enemymana.text=(combatenemy.GetComponent<Character>().currmana+"/"+combatenemy.GetComponent<Character>().maxmana);
+
+        int playerhealthratio=(int)((Player.GetComponent<Character>().currhealth*100)/Player.GetComponent<Character>().maxhealth);
+        int enemyhealthratio=(int)((combatenemy.GetComponent<Character>().currhealth*100)/combatenemy.GetComponent<Character>().maxhealth);
+        float playerhealthdiff=playerhealthbar.GetComponent<RectTransform>().rect.width;
+        float enemyhealthdiff=enemyhealthbar.GetComponent<RectTransform>().rect.width;
+
+        playerhealthbar.GetComponent<RectTransform>().sizeDelta = new Vector2 (playerhealthratio*3, 50);
+        enemyhealthbar.GetComponent<RectTransform>().sizeDelta = new Vector2 (enemyhealthratio*3, 50);
+        playerhealthdiff=(playerhealthdiff-playerhealthbar.GetComponent<RectTransform>().rect.width)/3;
+        enemyhealthdiff=(enemyhealthdiff-enemyhealthbar.GetComponent<RectTransform>().rect.width)/3;
+        playerhealthbar.transform.position -= new Vector3(playerhealthdiff*1.5f, 0, 0);
+        enemyhealthbar.transform.position -= new Vector3(enemyhealthdiff*1.5f, 0, 0);
+
+        int playermanaratio=(int)((Player.GetComponent<Character>().currmana*100)/Player.GetComponent<Character>().maxmana);
+        int enemymanaratio=(int)((combatenemy.GetComponent<Character>().currmana*100)/combatenemy.GetComponent<Character>().maxmana);
+        float playermanadiff=playermanabar.GetComponent<RectTransform>().rect.width;
+        float enemymanadiff=enemymanabar.GetComponent<RectTransform>().rect.width;
+
+        playermanabar.GetComponent<RectTransform>().sizeDelta = new Vector2 (playermanaratio*3, 50);
+        enemymanabar.GetComponent<RectTransform>().sizeDelta = new Vector2 (enemymanaratio*3, 50);
+        playermanadiff=(playermanadiff-playermanabar.GetComponent<RectTransform>().rect.width)/3;
+        enemymanadiff=(enemymanadiff-enemymanabar.GetComponent<RectTransform>().rect.width)/3;
+        playermanabar.transform.position -= new Vector3(playermanadiff*1.5f, 0, 0);
+        enemymanabar.transform.position -= new Vector3(enemymanadiff*1.5f, 0, 0);
     }
 
     private void Interact(int[] coords){
@@ -2163,6 +2405,8 @@ public class GameManager : MonoBehaviour{
                             if(MoveAllow(1,PlayerLocate())){
                                 tileactive=false;
                                 goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
+                                Player.GetComponent<Character>().ManaRegen();
+                                UIstats();
                                 EnemyMove();
                             }
                         }
@@ -2172,6 +2416,8 @@ public class GameManager : MonoBehaviour{
                             if(MoveAllow(3,PlayerLocate())){
                                 tileactive=false;
                                 goal.position = goal.position - new Vector3(Input.GetAxisRaw("Horizontal")*speed*0.5f, 0f, 0f);
+                                Player.GetComponent<Character>().ManaRegen();
+                                UIstats();
                                 EnemyMove();
                             }
                         }
@@ -2183,6 +2429,8 @@ public class GameManager : MonoBehaviour{
                             if(MoveAllow(0,PlayerLocate())){
                                 tileactive=false;
                                 goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
+                                Player.GetComponent<Character>().ManaRegen();
+                                UIstats();
                                 EnemyMove();
                             }
                         }
@@ -2192,6 +2440,8 @@ public class GameManager : MonoBehaviour{
                             if(MoveAllow(2,PlayerLocate())){
                                 tileactive=false;
                                 goal.position = goal.position - new Vector3(0f, Input.GetAxisRaw("Vertical")*speed*0.5f, 0f);
+                                Player.GetComponent<Character>().ManaRegen();
+                                UIstats();
                                 EnemyMove();
                             }
                         }

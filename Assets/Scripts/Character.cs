@@ -20,7 +20,7 @@ public class Character : MonoBehaviour {
     public int direction;
     public int spriteoffset;
     public List<List<int>> roomvisiting;
-    public List<string> statuses;
+    public List<List<string>> statuses;
     public GameObject goal;
     public Sprite[] images;
     public void initCharacter(string nam, int lev, int str, int agi, int con, int def, int inte, int wis, int offset) {
@@ -37,11 +37,12 @@ public class Character : MonoBehaviour {
         defence=def;
         intelligence=inte;
         wisdom=wis;
-        statuses= new List<string>();
+        statuses= new List<List<string>>();
         spriteoffset=offset;
         ChangeDirection(0);
         gameObject.GetComponent<SpriteRenderer>().sprite=images[spriteoffset];
     }
+    
     public int ChangeStat(string stat, int change) {
         switch(stat){
             case "str":
@@ -69,6 +70,7 @@ public class Character : MonoBehaviour {
         }
         return 9999999;
     }
+
     public int Heal(int value) {
         if (currhealth+value>maxhealth){
             currhealth=maxhealth;
@@ -78,9 +80,11 @@ public class Character : MonoBehaviour {
         }
         return currhealth;
     }
+
     public void ChangeDirection(int dire){
         direction=dire;
     }
+
     public int Harm(int value) {
         if (currhealth-value<0){
             currhealth=0;
@@ -89,5 +93,12 @@ public class Character : MonoBehaviour {
             currhealth=currhealth-value;
         }
         return currhealth;
+    }
+
+    public void ManaRegen(){
+        currmana = currmana+(int)maxmana/50;
+        if(currmana>maxmana){
+            currmana=maxmana;
+        }
     }
 }

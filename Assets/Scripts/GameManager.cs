@@ -1903,7 +1903,7 @@ public class GameManager : MonoBehaviour{
             }
             else{
                 int neededexp = (int)Math.Pow(1.2,Player.GetComponent<Character>().level)*500;
-                expgained=rando.Next((depth)*100,(depth+1)*100);
+                expgained=rando.Next((depth+wins*10)*100,(depth+1+wins*10)*100);
                 exptext.text=("exp gained: "+expgained);
                 Player.GetComponent<Character>().experience=Player.GetComponent<Character>().experience+expgained;
                 if (Player.GetComponent<Character>().experience>neededexp){
@@ -1965,76 +1965,165 @@ public class GameManager : MonoBehaviour{
         combatoptions.SetActive(true);
     }
 
+    private int AvailableSpells(){
+        int curr=combatenemy.GetComponent<Character>().currmana;
+        List<int> costs = new List<int>{50,40,25,35,45};
+        int spellcount=0;
+        for(int i=0;i<costs.Count;i++){
+            if(curr>=costs[i]){
+                spellcount++;
+            }
+        }
+        return spellcount;
+    }
+
     private void EnemyTurn(){
         //bandit orc goblin slime golem
         Random rando = new Random();
+        int spellcount = AvailableSpells();
         int chooseattack=0;
         int choosedefend=0;
+        int choosespell=0;
+        int chooseflee=0;
         if(depth!=bosslevel){
             switch(combatenemy.GetComponent<Character>().charname){
                 case "Bandit":
-                    //50% attack, 45% defend, 5% flee
-                    chooseattack=50;
-                    choosedefend=95;
+                    if((combatenemy.GetComponent<Character>().currhealth*100)/combatenemy.GetComponent<Character>().maxhealth<=20){
+                        //35% attack, 45% defend, 20% flee
+                        chooseattack=35;
+                        choosedefend=80;
+                        chooseflee=100;
+                    }
+                    else{
+                        //50% attack, 45% defend, 5% flee
+                        chooseattack=50;
+                        choosedefend=95;
+                        chooseflee=100;
+                    }
                     break;
                 case "Orc":
-                    //90% attack, 10% defend, 0% flee
-                    chooseattack=90;
-                    choosedefend=100;
+                    if((combatenemy.GetComponent<Character>().currhealth*100)/combatenemy.GetComponent<Character>().maxhealth<=20){
+                        //95% attack, 5% flee
+                        chooseattack=95;
+                        chooseflee=100;
+                    }
+                    else{
+                        //90% attack, 10% defend
+                        chooseattack=90;
+                        choosedefend=100;
+                    }
                     break;
                 case "Goblin":
                     //70% attack, 20% defend, 10% flee
-                    chooseattack=70;
-                    choosedefend=90;
+                    if((combatenemy.GetComponent<Character>().currhealth*100)/combatenemy.GetComponent<Character>().maxhealth<=30){
+                        //70% attack, 15% defend, 15% flee
+                        chooseattack=70;
+                        choosedefend=85;
+                        chooseflee=100;
+                    }
+                    else{
+                        //75% attack, 20% defend, 5% flee
+                        chooseattack=75;
+                        choosedefend=95;
+                        chooseflee=100;
+                    }
                     break;
                 case "Slime":
-                    //60% attack, 15% defend, 25% flee
-                    chooseattack=60;
-                    choosedefend=75;
+                    if((combatenemy.GetComponent<Character>().currhealth*100)/combatenemy.GetComponent<Character>().maxhealth<=25){
+                        //60% attack, 15% defend, 25% flee
+                        chooseattack=60;
+                        choosedefend=75;
+                        chooseflee=100;
+                    }
+                    else{
+                        //60% attack, 30% defend, 10% flee
+                        chooseattack=60;
+                        choosedefend=90;
+                        chooseflee=100;
+                    }
                     break;
                 case "Golem":
                     //25% attack, 70% defend, 5% flee
                     chooseattack=25;
                     choosedefend=95;
+                    chooseflee=100;
                     break;
                 case "Wizard":
-                    //100% attack
-                    chooseattack=80;
-                    choosedefend=100;
+                    //70% attack, 5-30% defend, 0-25% spell
+                    chooseattack=70;
+                    choosedefend=100-spellcount*5;
+                    choosespell=100;
                     break;
             }
         }
         else{
             switch(combatenemy.GetComponent<Character>().charname){
                 case "Bandit":
-                    //55% attack, 45% defend
-                    chooseattack=55;
-                    choosedefend=100;
+                    if(combatenemy.GetComponent<Character>().currmana>=35){
+                        chooseattack=60;
+                        choosedefend=90;
+                        choosespell=100;
+                    }
+                    else{
+                        //55% attack, 45% defend
+                        chooseattack=55;
+                        choosedefend=100;
+                    }
                     break;
                 case "Orc":
-                    //90% attack, 10% defend
-                    chooseattack=90;
-                    choosedefend=100;
+                    if(combatenemy.GetComponent<Character>().currmana>=35){
+                        chooseattack=85;
+                        choosespell=100;
+                    }
+                    else{
+                        //90% attack, 10% defend
+                        chooseattack=90;
+                        choosedefend=100;
+                    }
                     break;
                 case "Goblin":
-                    //75% attack, 25% defend
-                    chooseattack=75;
-                    choosedefend=100;
+                    if(combatenemy.GetComponent<Character>().currmana>=35){
+                        //60% attack, 20% defend, 20% spell
+                        chooseattack=60;
+                        choosedefend=80;
+                        choosespell=100;
+                    }
+                    else{
+                        //75% attack, 25% defend
+                        chooseattack=75;
+                        choosedefend=100;
+                    }
                     break;
                 case "Slime":
-                    //80% attack, 20% defend
-                    chooseattack=80;
-                    choosedefend=100;
+                    if(combatenemy.GetComponent<Character>().currmana>=50){
+                        //80% attack, 20% defend
+                        chooseattack=80;
+                        choosespell=100;
+                    }
+                    else{
+                        //80% attack, 20% defend
+                        chooseattack=80;
+                        choosedefend=100;
+                    }
                     break;
                 case "Golem":
-                    //30% attack, 70% defend
-                    chooseattack=30;
-                    choosedefend=100;
+                    if(combatenemy.GetComponent<Character>().currmana>=40){
+                        //30% attack, 50% defend, 20% spell
+                        chooseattack=30;
+                        choosedefend=80;
+                        choosespell=100;
+                    }
+                    else{
+                        //30% attack, 70% defend
+                        chooseattack=30;
+                        choosedefend=100;
+                    }
                     break;
                 case "Wizard":
-                    //100% attack
-                    chooseattack=100;
-                    choosedefend=101;
+                    //75% attack, 0-25% defend, 0-25% spell
+                    chooseattack=75;
+                    choosedefend=100-spellcount*5;
+                    choosespell=100;
                     break;
             }
         }
@@ -2047,9 +2136,80 @@ public class GameManager : MonoBehaviour{
                 Defend();
             }
             else{
-                Flee();
+                if(choosespell<chooseflee){
+                    if(roll<=choosespell){
+                        EnemySpells();
+                    }
+                    else{
+                        Flee();
+                    }
+                }
+                else{
+                    if(roll<=chooseflee){
+                        Flee();
+                    }
+                    else{
+                        EnemySpells();
+                    }
+                }
             }
         }
+    }
+    //new List<string>{"Heal Wounds","50","Heals the user by restoring some lost health"},
+    //new List<string>{"Breathe Fire","40","Applies burning to enemy, dealing damage each enemy turn"},
+    //new List<string>{"Arcane Knife","25","Heals the user by restoring some lost health"},
+    //new List<string>{"Power Charge","35","Heals the user by restoring some lost health"},
+    //new List<string>{"Wild Surge","45","Heals the user by restoring some lost health"}
+    private void EnemySpells(){
+        List<int> options = new List<int>();
+        int currmana=combatenemy.GetComponent<Character>().currmana;
+        switch(combatenemy.GetComponent<Character>().charname){
+            case "Bandit":
+                if(currmana>=35){
+                    options.Add(3);
+                }
+                break;
+            case "Orc":
+                if(currmana>=35){
+                    options.Add(3);
+                }
+                break;
+            case "Goblin":
+                if(currmana>=25){
+                    options.Add(2);
+                }
+                break;
+            case "Slime":
+                if(currmana>=50){
+                    options.Add(0);
+                }
+                break;
+            case "Golem":
+                if(currmana>=40){
+                    options.Add(1);
+                }
+                break;
+            case "Wizard":
+                if(currmana>=50){
+                    options.Add(0);
+                }
+                if(currmana>=40){
+                    options.Add(1);
+                }
+                if(currmana>=25){
+                    options.Add(2);
+                }
+                if(currmana>=35){
+                    options.Add(3);
+                }
+                if(currmana>=45){
+                    options.Add(4);
+                }
+                break;
+        }
+        Random rando = new Random();
+        tempspell=options[rando.Next(0,options.Count)];
+        Spells();
     }
 
     private int CheckStatus(bool playerenemy,string status){
@@ -2079,7 +2239,7 @@ public class GameManager : MonoBehaviour{
             if(chargefound!=-1){
                 attackstat = (int)(attackstat*1.2);
             }
-            int defendfound=CheckStatus(false,"Defending");
+            int defendfound=CheckStatus(true,"Defending");
             if(defendfound!=-1){
                 defence=defence*2;
                 combatenemy.GetComponent<Character>().statuses.RemoveAt(defendfound);
@@ -2095,7 +2255,7 @@ public class GameManager : MonoBehaviour{
             if(chargefound!=-1){
                 attackstat = (int)(attackstat*1.2);
             }
-            int defendfound=CheckStatus(true,"Defending");
+            int defendfound=CheckStatus(false,"Defending");
             if(defendfound!=-1){
                 defence=defence*2;
                 Player.GetComponent<Character>().statuses.RemoveAt(defendfound);
@@ -2117,7 +2277,7 @@ public class GameManager : MonoBehaviour{
             if(chargefound!=-1){
                 attackstat = (int)(attackstat*1.2);
             }
-            int defendfound=CheckStatus(false,"Defending");
+            int defendfound=CheckStatus(true,"Defending");
             if(defendfound!=-1){
                 defence=defence*2;
                 combatenemy.GetComponent<Character>().statuses.RemoveAt(defendfound);
@@ -2133,7 +2293,7 @@ public class GameManager : MonoBehaviour{
             if(chargefound!=-1){
                 attackstat = (int)(attackstat*1.2);
             }
-            int defendfound=CheckStatus(true,"Defending");
+            int defendfound=CheckStatus(false,"Defending");
             if(defendfound!=-1){
                 defence=defence*2;
                 Player.GetComponent<Character>().statuses.RemoveAt(defendfound);
@@ -2282,9 +2442,11 @@ public class GameManager : MonoBehaviour{
     }
 
     public void UpdateStats(string Option){
-        statpoints--;
-        Player.GetComponent<Character>().ChangeStat(Option,1);
-        UpdateStatsView();
+        if(statpoints>0){
+            statpoints--;
+            Player.GetComponent<Character>().ChangeStat(Option,1);
+            UpdateStatsView();
+        }
     }
 
     private void UpdateStatsView(){

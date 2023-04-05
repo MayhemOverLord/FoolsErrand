@@ -2026,7 +2026,7 @@ public class GameManager : MonoBehaviour{
                 if(npcfight){
                     expgained = 0;
                 }
-                else{
+                if(bossfight || !(npcfight)){
                     expgained=rando.Next((depth+wins*10)*100,(depth+1+wins*10)*100);
                 }
                 exptext.text=("exp gained: "+expgained);
@@ -2472,16 +2472,26 @@ public class GameManager : MonoBehaviour{
                     combattextpanel.SetActive(true);
                     break;
                 case 1: //Breathe Fire
-                    combatenemy.GetComponent<Character>().statuses.Add(new List<string>{"Burning","Turns",rando.Next(2,6).ToString()});
-                    combattext.text=("Your fire breath set the "+combatenemy.GetComponent<Character>().charname+" on fire!");
+                    if(CheckStatus(true,"Burning")==-1){
+                        combatenemy.GetComponent<Character>().statuses.Add(new List<string>{"Burning","Turns",rando.Next(2,6).ToString()});
+                        combattext.text=("Your fire breath set the "+combatenemy.GetComponent<Character>().charname+" on fire!");
+                    }
+                    else{
+                        combattext.text=("You cast breathe fire but the "+combatenemy.GetComponent<Character>().charname+" is already on fire!");
+                    }
                     combattextpanel.SetActive(true);
                     break;
                 case 2: //Arcane Knife
                     SpellAttack(40,"Arcane Knife");
                     break;
                 case 3: //Power Charge
-                    Player.GetComponent<Character>().statuses.Add(new List<string>{"Charged","Turns","10"});
-                    combattext.text=("Your power charge fills you with fighting energy!");
+                    if(CheckStatus(false,"Charged")==-1){
+                        Player.GetComponent<Character>().statuses.Add(new List<string>{"Charged","Turns","10"});
+                        combattext.text=("Your power charge fills you with fighting energy!");
+                    }
+                    else{
+                        combattext.text=("Your power charge failed as you are already charged!");
+                    }
                     combattextpanel.SetActive(true);
                     break;
                 case 4: //Wild Surge
@@ -2506,16 +2516,26 @@ public class GameManager : MonoBehaviour{
                     combattextpanel.SetActive(true);
                     break;
                 case 1: //Breathe Fire
-                    Player.GetComponent<Character>().statuses.Add(new List<string>{"Burning","Turns",rando.Next(2,6).ToString()});
-                    combattext.text=("The "+combatenemy.GetComponent<Character>().charname+"'s fire breath set you on fire!");
+                    if(CheckStatus(false,"Burning")==-1){
+                        Player.GetComponent<Character>().statuses.Add(new List<string>{"Burning","Turns",rando.Next(2,6).ToString()});
+                        combattext.text=("The "+combatenemy.GetComponent<Character>().charname+"'s fire breath set you on fire!");
+                    }
+                    else{
+                        combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" cast breathe fire but you are already on fire!");
+                    }
                     combattextpanel.SetActive(true);
                     break;
                 case 2: //Arcane Knife
                     SpellAttack(40,"Arcane Knife");
                     break;
                 case 3: //Power Charge
-                    combatenemy.GetComponent<Character>().statuses.Add(new List<string>{"Charged","Turns","10"});
-                    combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" used power charge to strengthen themself!");
+                    if(CheckStatus(true,"Charged")==-1){
+                        combatenemy.GetComponent<Character>().statuses.Add(new List<string>{"Charged","Turns","10"});
+                        combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" used power charge to strengthen themself!");
+                    }
+                    else{
+                        combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" used power charge but they were already strengthened!");
+                    }
                     combattextpanel.SetActive(true);
                     break;
                 case 4: //Wild Surge

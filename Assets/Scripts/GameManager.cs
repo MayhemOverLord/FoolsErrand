@@ -216,6 +216,7 @@ public class GameManager : MonoBehaviour{
     public TextMeshProUGUI UIHPtext;
     public TextMeshProUGUI UImanatext;
     public TextMeshProUGUI UIEXPtext;
+    public TextMeshProUGUI UIdepthtext;
     
     //Function for displaying the dungeon layout
     public void GridDisplay() {
@@ -250,11 +251,17 @@ public class GameManager : MonoBehaviour{
                 }
                 counter = counter+1;
             }
-            DoorMaker();
-            PlayerLocation = PlayerSpawn().ToArray();
-            LadderMake();
-            TileGen();
-            EnemySpawn();
+            if (counter>=10000){
+                GridDetermined();
+                PlayerLocation = PlayerSpawn().ToArray();
+            }
+            else{
+                DoorMaker();
+                PlayerLocation = PlayerSpawn().ToArray();
+                LadderMake();
+                TileGen();
+                EnemySpawn();
+            }
         }
         else{
             GridDetermined();
@@ -275,7 +282,6 @@ public class GameManager : MonoBehaviour{
     }
     private void GridDetermined(){
         //Starting Room
-        GridTut();
         if(depth==0){
             GridTut();
             PlayerLocation=new int[2]{0,2};
@@ -329,17 +335,24 @@ public class GameManager : MonoBehaviour{
         }
         //Boss Room
         else{
-            GridBoss();
-            PlayerLocation=new int[2]{0,4};
-            NPCs.Add(Instantiate(NPCprefab, new Vector3(0,0,0), Quaternion.identity));
-            NPCs[NPCs.Count-1].transform.SetParent(tilemap.transform);
-            NPCs[NPCs.Count-1].transform.position =  new Vector3(2*4+tilemap.transform.position.x,2*4+tilemap.transform.position.y,-1);
-            EnemyStats(NPCs[NPCs.Count-1],true);
-            NPCs[NPCs.Count-1].GetComponent<NPC>().initNPC(new List<string>{BossDialogue(NPCs[NPCs.Count-1])},"Fight","BOSS", new int[2]{4,4});
-            NPCs[NPCs.Count-1].transform.localScale *= 3;
-            NPCs[NPCs.Count-1].GetComponent<Character>().goal.transform.SetParent(tilemap.transform);
+            if(depth%bosslevel==0){
+                GridBoss();
+                PlayerLocation=new int[2]{0,4};
+                NPCs.Add(Instantiate(NPCprefab, new Vector3(0,0,0), Quaternion.identity));
+                NPCs[NPCs.Count-1].transform.SetParent(tilemap.transform);
+                NPCs[NPCs.Count-1].transform.position =  new Vector3(2*4+tilemap.transform.position.x,2*4+tilemap.transform.position.y,-1);
+                EnemyStats(NPCs[NPCs.Count-1],true);
+                NPCs[NPCs.Count-1].GetComponent<NPC>().initNPC(new List<string>{BossDialogue(NPCs[NPCs.Count-1])},"Fight","BOSS", new int[2]{4,4});
+                NPCs[NPCs.Count-1].transform.localScale *= 3;
+                NPCs[NPCs.Count-1].GetComponent<Character>().goal.transform.SetParent(tilemap.transform);
+            }
+            else{
+                BrokenGrid();
+                PlayerLocation=new int[2]{2,2};
+            }
         }
     }
+
     private string BossDialogue(GameObject NPC){
         switch(NPC.GetComponent<Character>().charname){
             //Bandit
@@ -366,6 +379,66 @@ public class GameManager : MonoBehaviour{
                 }
         }
         return "You've picked a fight with the wrong person, prepare to die!";
+    }
+
+    private void BrokenGrid(){
+        gridstore = new int[gridsize, gridsize];
+        for (int i = 0; i < gridsize; i++)
+        {
+            List<int> hold = new List<int>();
+            switch(i){
+                case 0:
+                    hold = new List<int>{0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+                    break;
+                case 1:
+                    hold = new List<int>{0,25,13,13,13,13,13,13,23,25,13,13,23,0};
+                    break;
+                case 2:
+                    hold = new List<int>{0,17,1,1,1,1,1,1,37,39,46,46,9,0};
+                    break;
+                case 3:
+                    hold = new List<int>{0,19,5,5,5,36,5,5,21,17,46,46,9,0};
+                    break;
+                case 4:
+                    hold = new List<int>{0,25,13,13,13,38,13,23,0,17,46,46,9,0};
+                    break;
+                case 5:
+                    hold = new List<int>{0,17,47,47,47,47,47,9,0,17,46,46,9,0};
+                    break;
+                case 6:
+                    hold = new List<int>{0,17,47,47,47,47,47,9,0,19,5,5,21,0};
+                    break;
+                case 7:
+                    hold = new List<int>{0,17,47,47,47,47,47,9,0,25,13,13,23,0};
+                    break;
+                case 8:
+                    hold = new List<int>{0,19,5,5,36,5,5,3,30,39,1,1,9,0};
+                    break;
+                case 9:
+                    hold = new List<int>{0,25,13,13,38,13,13,23,0,17,1,1,9,0};
+                    break;
+                case 10:
+                    hold = new List<int>{0,17,1,1,1,1,1,9,0,17,1,1,9,0};
+                    break;
+                case 11:
+                    hold = new List<int>{0,17,1,1,1,1,1,9,0,17,1,45,9,0};
+                    break;
+                case 12:
+                    hold = new List<int>{0,19,5,5,5,5,5,21,0,19,5,5,21,0};
+                    break;
+                case 13:
+                    hold = new List<int>{0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+                    break;
+            }
+            for (int j = hold.Count-1; j < gridsize; j++)
+            {
+                hold.Add(0);
+            }
+            for (int j = 0; j < gridsize; j++)
+            {
+                gridstore[i,j] = hold[j]; //Solid tiles
+            }
+        }
     }
     private void GridTut()
     {
@@ -496,7 +569,7 @@ public class GameManager : MonoBehaviour{
         List<List<int>> Validtiles = new List<List<int>>();
         for (int y=1; y<gridsize-1;y++){
             for (int x=1; x<gridsize-1;x++){
-                if(gridstore[y,x]!=0 & ((playerlocation[0]-6>x | playerlocation[0]+6<x) | (playerlocation[1]+2<y | playerlocation[1]-2>y))){
+                if(gridstore[y,x]!=0 && ((playerlocation[0]-6>x || playerlocation[0]+6<x) || (playerlocation[1]+2<y || playerlocation[1]-2>y))){
                     Validtiles.Add(new List<int>{y,x});
                 }
             }
@@ -516,7 +589,7 @@ public class GameManager : MonoBehaviour{
                 finding=false;
                 enemylocate = EnemyValid();
                 for (int i=0;i<enemies.Count;i++){
-                    if((enemies[i].transform.position.x-tilemap.transform.position.x)/2==enemylocate[0] & (enemies[i].transform.position.y-tilemap.transform.position.y)/2==enemylocate[1]){
+                    if((enemies[i].transform.position.x-tilemap.transform.position.x)/2==enemylocate[0] && (enemies[i].transform.position.y-tilemap.transform.position.y)/2==enemylocate[1]){
                         finding=true;
                     }
                 }
@@ -1504,7 +1577,7 @@ public class GameManager : MonoBehaviour{
 
     private bool nearbyneighbour(int x, int y){
         for(int i=0;i<enemies.Count;i++){
-            if ((enemies[i].GetComponent<Character>().goal.transform.position[0]-tilemap.transform.position.x)/2==x & (enemies[i].GetComponent<Character>().goal.transform.position[1]-tilemap.transform.position.y)/2==y){
+            if ((enemies[i].GetComponent<Character>().goal.transform.position[0]-tilemap.transform.position.x)/2==x && (enemies[i].GetComponent<Character>().goal.transform.position[1]-tilemap.transform.position.y)/2==y){
                 return false;
             }
         }
@@ -1929,6 +2002,9 @@ public class GameManager : MonoBehaviour{
 
     private void endcombat(bool success){
         UIstats();
+        if(npcfight){
+            Player.GetComponent<Character>().currmana=Player.GetComponent<Character>().maxmana;
+        }
         Player.GetComponent<Character>().statuses=new List<List<string>>();
         Random rando = new Random();
         exppanel.SetActive(true);
@@ -1946,7 +2022,7 @@ public class GameManager : MonoBehaviour{
                 exptext.text=("ran away\nexp gained 0");
             }
             else{
-                int neededexp = (int)Math.Pow(1.2,Player.GetComponent<Character>().level)*500;
+                int neededexp = (int)(Math.Pow(1.2,Player.GetComponent<Character>().level)*500);
                 if(npcfight){
                     expgained = 0;
                 }
@@ -2233,7 +2309,7 @@ public class GameManager : MonoBehaviour{
                 }
                 break;
             case "Slime":
-                if(currmana>=50){
+                if((currmana>=50) && (combatenemy.GetComponent<Character>().currhealth<combatenemy.GetComponent<Character>().maxhealth)){
                     options.Add(0);
                 }
                 break;
@@ -2243,7 +2319,7 @@ public class GameManager : MonoBehaviour{
                 }
                 break;
             case "Wizard":
-                if(currmana>=50){
+                if((currmana>=50) && (combatenemy.GetComponent<Character>().currhealth<combatenemy.GetComponent<Character>().maxhealth)){
                     options.Add(0);
                 }
                 if(currmana>=40){
@@ -2492,7 +2568,8 @@ public class GameManager : MonoBehaviour{
         UInametext.text = (Player.GetComponent<Character>().charname+" - LVL "+Player.GetComponent<Character>().level);
         UIHPtext.text = ("Health: "+Player.GetComponent<Character>().currhealth+"/"+Player.GetComponent<Character>().maxhealth);
         UImanatext.text = ("Mana: "+Player.GetComponent<Character>().currmana+"/"+Player.GetComponent<Character>().maxmana);
-        UIEXPtext.text = ("EXP: "+Player.GetComponent<Character>().experience+"/"+(int)Math.Pow(1.2,Player.GetComponent<Character>().level)*500);
+        UIEXPtext.text = ("EXP: "+Player.GetComponent<Character>().experience+"/"+(int)(Math.Pow(1.2,Player.GetComponent<Character>().level)*500));
+        UIdepthtext.text =("Depth: "+depth);
     }
 
     public void UpdateStats(string Option){

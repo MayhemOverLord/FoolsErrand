@@ -28,7 +28,6 @@ public class MainMenu : MonoBehaviour {
 
     public void NameConfirm() {
         username = nametext.text;
-        Debug.Log(username);
         IntroPanel.SetActive(true);
     }
     public void StoryRead(){

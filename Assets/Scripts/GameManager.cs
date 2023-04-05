@@ -24,7 +24,7 @@ public class GameManager : MonoBehaviour{
     public bool squaregen = true;
     private int[] PlayerLocation = new int[2];
     private int direction;
-    private int depth = 0;
+    public int depth = 0;
     private int wins = 0;
     private int bosslevel=10;
     private List<List<int>> trcorners;
@@ -183,9 +183,9 @@ public class GameManager : MonoBehaviour{
     private List<List<string>> spelllist = new List<List<string>>{
         new List<string>{"Heal Wounds","50","Heals the user by restoring some lost health"},
         new List<string>{"Breathe Fire","40","Applies burning to enemy, dealing damage each enemy turn"},
-        new List<string>{"Arcane Knife","25","Heals the user by restoring some lost health"},
-        new List<string>{"Power Charge","35","Heals the user by restoring some lost health"},
-        new List<string>{"Wild Surge","45","Heals the user by restoring some lost health"}
+        new List<string>{"Arcane Knife","25","Damages the enemy with a magical blade"},
+        new List<string>{"Power Charge","35","Empowers the user with physical and magical strength, increasing attack power"},
+        new List<string>{"Wild Surge","45","A risky move with a high chance of missing but great damage capability"}
     };
 
     public TextMeshProUGUI exptext;
@@ -207,6 +207,7 @@ public class GameManager : MonoBehaviour{
     public GameObject NPCprefab;
     public List<GameObject> NPCs;
     private bool bossfight;
+    private bool npcfight;
     private int interactindex;
     public GameObject gameoverpanel;
     public TextMeshProUGUI gameovertext;
@@ -214,9 +215,12 @@ public class GameManager : MonoBehaviour{
     public TextMeshProUGUI UInametext;
     public TextMeshProUGUI UIHPtext;
     public TextMeshProUGUI UImanatext;
+    public TextMeshProUGUI UIEXPtext;
     
     //Function for displaying the dungeon layout
     public void GridDisplay() {
+        bossfight=false;
+        npcfight=false;
         UIstats();
         tileactive=true;
         bool normgen=!(depth==0 || depth==bosslevel);
@@ -275,16 +279,53 @@ public class GameManager : MonoBehaviour{
         if(depth==0){
             GridTut();
             PlayerLocation=new int[2]{0,2};
+            //Guide NPC
             NPCs.Add(Instantiate(NPCprefab, new Vector3(0,0,0), Quaternion.identity));
             NPCs[NPCs.Count-1].transform.SetParent(tilemap.transform);
             NPCs[NPCs.Count-1].transform.position =  new Vector3(2*2+tilemap.transform.position.x,2*4+tilemap.transform.position.y,-1);
             NPCs[NPCs.Count-1].GetComponent<Character>().initCharacter("Guide",100,1000,1000,1000,1000,1000,1000,1);
             NPCs[NPCs.Count-1].GetComponent<NPC>().initNPC(new List<string>{"Guide: Welcome to the dungeon, this is where the villain is hiding",
             "Guide: I've heard that the villain is hiding on layer "+bosslevel+"!",
-            "Guide: You can descend down the ladder to reach new levels of the dungeon,",
+            "Guide: You can descend down the ladder to reach new layers of the dungeon,",
             "Guide: Be careful though, there are monsters that grow stronger the deeper you go.",
             "Guide: I wish you luck, the kingdom depends on you!"
             },"Exit","NPC", new int[2]{2,4});
+
+            //Combat Guide NPC
+            NPCs.Add(Instantiate(NPCprefab, new Vector3(0,0,0), Quaternion.identity));
+            NPCs[NPCs.Count-1].transform.SetParent(tilemap.transform);
+            NPCs[NPCs.Count-1].transform.position =  new Vector3(2*6+tilemap.transform.position.x,2*4+tilemap.transform.position.y,-1);
+            NPCs[NPCs.Count-1].GetComponent<Character>().initCharacter("Guide",100,1000,1000,1000,1000,1000,1000,1);
+            NPCs[NPCs.Count-1].GetComponent<NPC>().initNPC(new List<string>{"Combat Teacher: I guess I should probably explain what your stats are right?",
+            "Combat Teacher: Your strength stat affects how much damage you deal when using a regular attack,",
+            "Combat Teacher: Agility determines how often you attack before your opponent does,",
+            "Combat Teacher: Constitution will increase current and maximum health by 10 each,",
+            "Combat Teacher: Defence helps to reduce the damage from any attacks coming your way,",
+            "Combat Teacher: Intelligence determines the power of your magical abilities,",
+            "Combat Teacher: Wisdom will give you mana capacity and determine your mana regen,",
+            "Combat Teacher: Well looks like that's it for stats, go chat to the dummy if you want to know how combat works!"
+            },"Exit","NPC", new int[2]{6,4});
+
+            //Dummy NPC
+            NPCs.Add(Instantiate(NPCprefab, new Vector3(0,0,0), Quaternion.identity));
+            NPCs[NPCs.Count-1].transform.SetParent(tilemap.transform);
+            NPCs[NPCs.Count-1].transform.position =  new Vector3(2*8+tilemap.transform.position.x,2*4+tilemap.transform.position.y,-1);
+            int agil = Player.GetComponent<Character>().agility;
+            if(agil==0){
+                agil=10;
+            }
+            NPCs[NPCs.Count-1].GetComponent<Character>().initCharacter("Dummy",1,0,agil-1,100,5,1,1,8);
+            NPCs[NPCs.Count-1].GetComponent<NPC>().initNPC(new List<string>{"Dummy: Hello! I am the combat dummy, want to learn how fighting works?",
+            "Dummy: Fighting is all about who's fastest, if you're 5 times faster than your opponent, you can hit them 5 times before they can fight back!",
+            "Dummy: Your basic attack option uses your strength against your enemy's defence to reduce the enemy's health points,",
+            "Dummy: If you manage to fight well enough to drop your enemy to 0 hit points you win!",
+            "Dummy: But if they drop you to 0 hit points you are beaten and end up back here, so don't let that happen...",
+            "Dummy: Defending will halve the next attack you receive from an opponent, keeping you safe a little longer!",
+            "Dummy: Fleeing is guaranteed if you're faster than your opponent, but the faster they are more than you the less your chances of escape!",
+            "Dummy: Spells are powered by your intelligence and mana, clicking on each spell in the spell menu will give you a description",
+            "Dummy: Spells are powered by mana, it is refueled a little at the end of each of your turns and each step you take in the dungeon",
+            "Dummy: I think we've covered just about anything, why not try out a few hits on me?",
+            },"Fight","NPC", new int[2]{8,4});
         }
         //Boss Room
         else{
@@ -1381,7 +1422,7 @@ public class GameManager : MonoBehaviour{
         }
         //Magma
         if(gridstore[goallocate[1],goallocate[0]]==46){
-            Player.GetComponent<Character>().currhealth=Player.GetComponent<Character>().currhealth-5;
+            Player.GetComponent<Character>().Harm(5);
             UIstats();
         }
         //Ice
@@ -1407,7 +1448,7 @@ public class GameManager : MonoBehaviour{
         }
         //Spike
         if(gridstore[goallocate[1],goallocate[0]]==48){
-            Player.GetComponent<Character>().currhealth=Player.GetComponent<Character>().currhealth-5;
+            Player.GetComponent<Character>().Harm(5);
             UIstats();
             tilemap.SetTile(new Vector3Int(goallocate[0]*2+1, goallocate[1]*2+1, 0), tiles[48]);
         }
@@ -1724,10 +1765,12 @@ public class GameManager : MonoBehaviour{
             NPCs.Remove(NPCs[i]);
         }
         else{
-            Destroy(enemies[i].GetComponent<Character>().goal);
-            Destroy(enemies[i]);
-            enemies.Remove(enemies[i]);
-            EnemySpawn();
+            if(!npcfight){
+                Destroy(enemies[i].GetComponent<Character>().goal);
+                Destroy(enemies[i]);
+                enemies.Remove(enemies[i]);
+                EnemySpawn();
+            }
         }
     }
 
@@ -1862,7 +1905,7 @@ public class GameManager : MonoBehaviour{
         if(combatenemy.GetComponent<Character>().currhealth==0){
             endcombat(true);
         }
-        if((!fled) & (Player.GetComponent<Character>().currhealth!=0) & (combatenemy.GetComponent<Character>().currhealth!=0)){
+        if((!fled) && (Player.GetComponent<Character>().currhealth!=0) && (combatenemy.GetComponent<Character>().currhealth!=0)){
             if(turneffect){
                 currentturn++;
                 if(TurnCheck()==1){
@@ -1886,6 +1929,7 @@ public class GameManager : MonoBehaviour{
 
     private void endcombat(bool success){
         UIstats();
+        Player.GetComponent<Character>().statuses=new List<List<string>>();
         Random rando = new Random();
         exppanel.SetActive(true);
         donebutton.SetActive(true);
@@ -1903,7 +1947,12 @@ public class GameManager : MonoBehaviour{
             }
             else{
                 int neededexp = (int)Math.Pow(1.2,Player.GetComponent<Character>().level)*500;
-                expgained=rando.Next((depth+wins*10)*100,(depth+1+wins*10)*100);
+                if(npcfight){
+                    expgained = 0;
+                }
+                else{
+                    expgained=rando.Next((depth+wins*10)*100,(depth+1+wins*10)*100);
+                }
                 exptext.text=("exp gained: "+expgained);
                 Player.GetComponent<Character>().experience=Player.GetComponent<Character>().experience+expgained;
                 if (Player.GetComponent<Character>().experience>neededexp){
@@ -2053,6 +2102,10 @@ public class GameManager : MonoBehaviour{
                     chooseattack=70;
                     choosedefend=100-spellcount*5;
                     choosespell=100;
+                    break;
+                case "Dummy":
+                    chooseattack=50;
+                    choosedefend=100;
                     break;
             }
         }
@@ -2439,6 +2492,7 @@ public class GameManager : MonoBehaviour{
         UInametext.text = (Player.GetComponent<Character>().charname+" - LVL "+Player.GetComponent<Character>().level);
         UIHPtext.text = ("Health: "+Player.GetComponent<Character>().currhealth+"/"+Player.GetComponent<Character>().maxhealth);
         UImanatext.text = ("Mana: "+Player.GetComponent<Character>().currmana+"/"+Player.GetComponent<Character>().maxmana);
+        UIEXPtext.text = ("EXP: "+Player.GetComponent<Character>().experience+"/"+(int)Math.Pow(1.2,Player.GetComponent<Character>().level)*500);
     }
 
     public void UpdateStats(string Option){
@@ -2522,6 +2576,9 @@ public class GameManager : MonoBehaviour{
         popuptext.text=result;
         popupwindow.SetActive(true);
         nextdiabutton.SetActive(true);
+        battleops.SetActive(false);
+        descendops.SetActive(false);
+        popupops.SetActive(false);
         if(NPCs[interactindex].GetComponent<NPC>().DialogueSteps+1>=NPCs[interactindex].GetComponent<NPC>().Dialogue.Count){
             nextdiatext.text=NPCs[interactindex].GetComponent<NPC>().PostDialogue;
         }
@@ -2537,7 +2594,11 @@ public class GameManager : MonoBehaviour{
             nextdiabutton.SetActive(false);
             popupwindow.SetActive(false);
             combatenemy=NPCs[interactindex];
-            bossfight=true;
+            npcfight=true;
+            if(combatenemy.GetComponent<NPC>().Type=="BOSS"){
+                bossfight=true;
+            }
+
             combatpopup();
         }
     }
@@ -2550,6 +2611,7 @@ public class GameManager : MonoBehaviour{
         goal.SetParent(null);
         Player.GetComponent<Character>().initCharacter(MainMenu.username,1,10,10,10,10,10,10,0);
         bossfight=false;
+        npcfight=false;
         UIstats();
     }
 

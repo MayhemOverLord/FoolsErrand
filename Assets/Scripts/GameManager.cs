@@ -148,6 +148,7 @@ public class GameManager : MonoBehaviour{
     public GameObject popupops;
     public GameObject descendops;
     public GameObject battleops;
+    public GameObject stuckops;
     private bool popped=false;
     private GameObject combatenemy;
     private int combatenemyindex;
@@ -1491,6 +1492,7 @@ public class GameManager : MonoBehaviour{
                 descendops.SetActive(true);
                 popupops.SetActive(false);
                 battleops.SetActive(false);
+                stuckops.SetActive(false);
             }
         }
         //Magma
@@ -1541,12 +1543,24 @@ public class GameManager : MonoBehaviour{
         popupwindow.SetActive(false);
         popped=false;
     }
+
+    public void Stuck(){
+        popped=true;
+        popuptext.text="This button will return you to start with health and mana restored. Would you like to return?";
+        stuckops.SetActive(true);
+        popupwindow.SetActive(true);
+        battleops.SetActive(false);
+        nextdiabutton.SetActive(false);
+        descendops.SetActive(false);
+        popupops.SetActive(false);
+    }
     
     private void combatpopup(){
         popped=true;
         popuptext.text=("You have been attacked by a "+combatenemy.GetComponent<Character>().charname+"!");
         popupwindow.SetActive(true);
         battleops.SetActive(true);
+        stuckops.SetActive(false);
         nextdiabutton.SetActive(false);
         descendops.SetActive(false);
         popupops.SetActive(false);
@@ -2562,7 +2576,7 @@ public class GameManager : MonoBehaviour{
         combattextpanel.SetActive(true);
         if(TurnCheck()==1){
             //Player Turn
-            chance=(int)((playspeed/enemspeed)*100);
+            chance=(int)((playspeed*100)/enemspeed);
             if((roll<=chance) && !(bossfight)){
                 combattext.text=("You have successfully fled from combat!");
                 fled=true;
@@ -2573,7 +2587,7 @@ public class GameManager : MonoBehaviour{
         }
         else{
             //Enemy Turn
-            chance=(int)((enemspeed/playspeed)*100);
+            chance=(int)((enemspeed*100)/playspeed);
             if(roll<=chance){
                 combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" has successfully run away!");
                 fled=true;
@@ -2674,6 +2688,7 @@ public class GameManager : MonoBehaviour{
         popupwindow.SetActive(true);
         nextdiabutton.SetActive(true);
         battleops.SetActive(false);
+        stuckops.SetActive(false);
         descendops.SetActive(false);
         popupops.SetActive(false);
         if(NPCs[interactindex].GetComponent<NPC>().DialogueSteps+1>=NPCs[interactindex].GetComponent<NPC>().Dialogue.Count){

@@ -299,6 +299,8 @@ public class GameManager : MonoBehaviour{
         goal.position = new Vector3Int(-2*PlayerLocation[1],-2*PlayerLocation[0], 0);
         direction = 0;
     }
+
+    //Prepares predetermined unique rooms like the starting lobby room or the boss room
     private void GridDetermined(){
         //Starting Room
         if(depth==0){
@@ -375,6 +377,7 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Function for acquiring boss dialogue
     private string BossDialogue(GameObject NPC){
         //Returns boss dialogue determined by what enemy type it is
         switch(NPC.GetComponent<Character>().charname){
@@ -403,7 +406,7 @@ public class GameManager : MonoBehaviour{
         }
         return "You've picked a fight with the wrong person, prepare to die!";
     }
-
+    //Function for a predetermined dungeon layer
     private void BrokenGrid(){
         //Creates a predetermined dungeon layer in case of generation errors
         gridstore = new int[gridsize, gridsize];
@@ -464,6 +467,7 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+    //Creates the starting lobby layout
     private void GridTut()
     {
         //Creates the lobby layer
@@ -498,6 +502,7 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
+    //Creates the predetermined layer layout for the boss room
     private void GridBoss()
     {
         //Creates the boss room layer

@@ -24,6 +24,7 @@ public class Character : MonoBehaviour {
     public GameObject goal;
     public Sprite[] images;
     public void initCharacter(string nam, int lev, int str, int agi, int con, int def, int inte, int wis, int offset) {
+        //Prepares character stats
         charname=nam;
         level=lev;
         experience=0;
@@ -40,9 +41,11 @@ public class Character : MonoBehaviour {
         statuses= new List<List<string>>();
         spriteoffset=offset;
         ChangeDirection(0);
+        //Applies the character sprite
         gameObject.GetComponent<SpriteRenderer>().sprite=images[spriteoffset];
     }
     
+    //Function for increasing character stats
     public int ChangeStat(string stat, int change) {
         switch(stat){
             case "str":
@@ -71,6 +74,7 @@ public class Character : MonoBehaviour {
         return 9999999;
     }
 
+    //Function for restoring character's current health
     public int Heal(int value) {
         if (currhealth+value>maxhealth){
             currhealth=maxhealth;
@@ -81,10 +85,12 @@ public class Character : MonoBehaviour {
         return currhealth;
     }
 
+    //Sets the direction for the character
     public void ChangeDirection(int dire){
         direction=dire;
     }
 
+    //Reduces character's current health by a damage value
     public int Harm(int value) {
         if (currhealth-value<0){
             currhealth=0;
@@ -95,6 +101,7 @@ public class Character : MonoBehaviour {
         return currhealth;
     }
 
+    //Regenerates character mana at a rate based on maximum mana
     public void ManaRegen(){
         currmana = currmana+(int)maxmana/50;
         if(currmana>maxmana){

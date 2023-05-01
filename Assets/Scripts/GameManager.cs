@@ -15,8 +15,10 @@ public class GameManager : MonoBehaviour{
     public GameObject Player;
     public Tile[] tiles;
     public Tilemap tilemap;
+    //Speed for moving across tiles
     public float speed = 4;
     private bool tileactive = false;
+    //Maximum width/length of a dungeon and maximum enemy count
     public int gridsize = 14;
     public int enemycount = 4;
     public Transform goal;
@@ -24,14 +26,19 @@ public class GameManager : MonoBehaviour{
     public bool squaregen = true;
     private int[] PlayerLocation = new int[2];
     private int direction;
+    //Values used for determining enemy difficulty
     public int depth = 0;
     private int wins = 0;
     private int bosslevel=10;
+    //Lists used for storing room dimensions
     private List<List<int>> trcorners;
     private List<List<int>> blcorners;
     private List<List<int>> roomcenters;
+    //List of all tiles
     private List<int> alltiles = new List<int>{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44};
+    //List of tiles used in wave collapse generation
     private List<int> squaretiles = new List<int>{0,1,5,9,13,17,19,21,23,25};
+    //Arrays for whether a player can move directionally per tile
     private bool[,] tilemove = {
         {false,false,false,false}, //0 N
         {true,true,true,true}, //1 A
@@ -83,6 +90,7 @@ public class GameManager : MonoBehaviour{
         {true,true,true,true}, //47 Ice
         {true,true,true,true} //48 Spike
     };
+    //Array for determining what sets of tiles can connect to a tile in each direction
     private int[,] connections = { //Set of direction connection groups for each tile
         {4,4,4,4}, //0 N
         {0,0,0,0}, //1 A
@@ -130,7 +138,7 @@ public class GameManager : MonoBehaviour{
         {3,1,2,3}, //43 Q12
         {3,3,3,3} //44 Q13
     };
-    //Set of connections for more dynamic generation
+    //Set of connections between tiles for more dynamic generation
     private List<List<List<int>>> connectClassify = new List<List<List<int>>>{
     new List<List<int>>{new List<int>{1,5,32,33,36},new List<int>{1,9,33,34,37},new List<int>{1,13,34,35,38},new List<int>{1,17,32,35,39}}, //Empty
     new List<List<int>>{new List<int>{2,15,17,19,35,39,43},new List<int>{5,6,21,32,36,40},new List<int>{7,9,10,23,33,37,41},new List<int>{11,13,14,25,34,38,42}}, //Left
@@ -139,6 +147,7 @@ public class GameManager : MonoBehaviour{
     new List<List<int>>{new List<int>{0,10,11,12,13,22,23,24,25,26,27,29,30},new List<int>{0,14,15,16,17,18,19,24,25,26,27,28,31},new List<int>{0,2,3,4,5,18,19,20,21,26,27,28,30},new List<int>{0,6,7,8,9,20,21,22,23,26,28,29,31}}, //Wall
     new List<List<int>>{new List<int>{1,5,32,33,36,5,32,33,36},new List<int>{1,9,33,34,37,9,33,34,37},new List<int>{1,13,34,35,38,13,34,35,38},new List<int>{1,17,32,35,39,17,32,35,39}}
     };
+    //UI objects
     public GameObject enemyprefab;
     private List<GameObject> enemies;
     public GameObject popupwindow;
@@ -149,6 +158,7 @@ public class GameManager : MonoBehaviour{
     public GameObject descendops;
     public GameObject battleops;
     public GameObject stuckops;
+    //Whether there is currently a popup on screen, preventing player movement
     private bool popped=false;
     private GameObject combatenemy;
     private int combatenemyindex;
@@ -169,6 +179,7 @@ public class GameManager : MonoBehaviour{
     public GameObject playermanabar;
     public GameObject enemyhealthbar;
     public GameObject enemymanabar;
+    //Combat related values
     private List<int> turnqueue;
     private int turns;
     private bool playerfirst;
@@ -181,6 +192,7 @@ public class GameManager : MonoBehaviour{
     public GameObject spellviewpanel;
     public GameObject spellcastbutton;
     public TextMeshProUGUI spelldescription;
+    //List of usable spells
     private List<List<string>> spelllist = new List<List<string>>{
         new List<string>{"Heal Wounds","50","Heals the user by restoring some lost health"},
         new List<string>{"Breathe Fire","40","Applies burning to enemy, dealing damage each enemy turn"},
@@ -189,6 +201,7 @@ public class GameManager : MonoBehaviour{
         new List<string>{"Wild Surge","45","A risky move with a high chance of missing but great damage capability"}
     };
 
+    //Objects for experience gained/level up panel
     public TextMeshProUGUI exptext;
     public GameObject exppanel;
     public GameObject strpanel;
@@ -213,6 +226,7 @@ public class GameManager : MonoBehaviour{
     public GameObject gameoverpanel;
     public TextMeshProUGUI gameovertext;
 
+    //Top left player stats UI objects
     public TextMeshProUGUI UInametext;
     public TextMeshProUGUI UIHPtext;
     public TextMeshProUGUI UImanatext;
@@ -228,6 +242,7 @@ public class GameManager : MonoBehaviour{
         bool normgen=!(depth==0 || depth==bosslevel);
         bool validgen = false;
         int counter = 0;
+        //Clears all preexisting enemies and NPCs
         if(enemies!=null){
             for (int i =enemies.Count-1;i>=0;i--){
                 Destroy(enemies[i].GetComponent<Character>().goal);
@@ -243,6 +258,7 @@ public class GameManager : MonoBehaviour{
         NPCs = new List<GameObject>();
         enemies = new List<GameObject>();
         if(normgen){
+            //Creates a normal dungeon layer
             while (!validgen) //Runs grid generation until a valid grid has been generated
             {
                 GridGen();
@@ -265,6 +281,7 @@ public class GameManager : MonoBehaviour{
             }
         }
         else{
+            //Creates either the lobby layer or the boss layer
             GridDetermined();
         }
         //Outputs the tile display
@@ -277,6 +294,7 @@ public class GameManager : MonoBehaviour{
                 }
             }
         }
+        //Sets the player location on screen
         transform.position = new Vector3Int(-2*PlayerLocation[1],-2*PlayerLocation[0], 0);
         goal.position = new Vector3Int(-2*PlayerLocation[1],-2*PlayerLocation[0], 0);
         direction = 0;
@@ -284,6 +302,7 @@ public class GameManager : MonoBehaviour{
     private void GridDetermined(){
         //Starting Room
         if(depth==0){
+            //Creates the lobby room layout
             GridTut();
             PlayerLocation=new int[2]{0,2};
             //Guide NPC
@@ -291,7 +310,7 @@ public class GameManager : MonoBehaviour{
             NPCs[NPCs.Count-1].transform.SetParent(tilemap.transform);
             NPCs[NPCs.Count-1].transform.position =  new Vector3(2*2+tilemap.transform.position.x,2*4+tilemap.transform.position.y,-1);
             NPCs[NPCs.Count-1].GetComponent<Character>().initCharacter("Guide",100,1000,1000,1000,1000,1000,1000,1);
-            NPCs[NPCs.Count-1].GetComponent<NPC>().initNPC(new List<string>{"Guide: Welcome to the dungeon, this is where the villain is hiding",
+            NPCs[NPCs.Count-1].GetComponent<NPC>().initNPC(new List<string>{"Guide: Welcome to the dungeon, this is where the villain is hiding,",
             "Guide: I've heard that the villain is hiding on layer "+bosslevel+"!",
             "Guide: You can descend down the ladder to reach new layers of the dungeon,",
             "Guide: Be careful though, there are monsters that grow stronger the deeper you go.",
@@ -329,14 +348,15 @@ public class GameManager : MonoBehaviour{
             "Dummy: But if they drop you to 0 hit points you are beaten and end up back here, so don't let that happen...",
             "Dummy: Defending will halve the next attack you receive from an opponent, keeping you safe a little longer!",
             "Dummy: Fleeing is guaranteed if you're faster than your opponent, but the faster they are more than you the less your chances of escape!",
-            "Dummy: Spells are powered by your intelligence and mana, clicking on each spell in the spell menu will give you a description",
-            "Dummy: Spells are powered by mana, it is refueled a little at the end of each of your turns and each step you take in the dungeon",
-            "Dummy: I think we've covered just about anything, why not try out a few hits on me?",
+            "Dummy: Spells are powered by your intelligence, clicking on each spell in the spell menu will give you a description,",
+            "Dummy: Spells are fuelled by mana, it is refueled a little at the end of each of your turns and on each step you take in the dungeon.",
+            "Dummy: I think we've covered just about everything, why not try out a few hits on me?",
             },"Fight","NPC", new int[2]{8,4});
         }
         //Boss Room
         else{
             if(depth%bosslevel==0){
+                //Creates the boss room
                 GridBoss();
                 PlayerLocation=new int[2]{0,4};
                 NPCs.Add(Instantiate(NPCprefab, new Vector3(0,0,0), Quaternion.identity));
@@ -348,6 +368,7 @@ public class GameManager : MonoBehaviour{
                 NPCs[NPCs.Count-1].GetComponent<Character>().goal.transform.SetParent(tilemap.transform);
             }
             else{
+                //Creates a predetermined room if generation fails
                 BrokenGrid();
                 PlayerLocation=new int[2]{2,2};
             }
@@ -355,6 +376,7 @@ public class GameManager : MonoBehaviour{
     }
 
     private string BossDialogue(GameObject NPC){
+        //Returns boss dialogue determined by what enemy type it is
         switch(NPC.GetComponent<Character>().charname){
             //Bandit
             case "Bandit":
@@ -383,6 +405,7 @@ public class GameManager : MonoBehaviour{
     }
 
     private void BrokenGrid(){
+        //Creates a predetermined dungeon layer in case of generation errors
         gridstore = new int[gridsize, gridsize];
         for (int i = 0; i < gridsize; i++)
         {
@@ -443,6 +466,7 @@ public class GameManager : MonoBehaviour{
     }
     private void GridTut()
     {
+        //Creates the lobby layer
         gridstore = new int[gridsize, gridsize];
         for (int i = 0; i < gridsize; i++)
         {
@@ -476,6 +500,7 @@ public class GameManager : MonoBehaviour{
     }
     private void GridBoss()
     {
+        //Creates the boss room layer
         gridstore = new int[gridsize, gridsize];
         for (int i = 0; i < gridsize; i++)
         {
@@ -531,6 +556,7 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Chooses a random place in the dungeon and adds a ladder
     private void LadderMake(){
         List<List<int>> Validtiles = ValidTiler();
         Random rando = new Random();
@@ -538,6 +564,7 @@ public class GameManager : MonoBehaviour{
         gridstore[Validtiles[hold][0],Validtiles[hold][1]]=45;
     }
     
+    //Checks if this tile is a valid part of the dungeon floor
     private List<List<int>> ValidTiler(){
         int[] playerlocation = PlayerLocate();
         List<List<int>> Validtiles = new List<List<int>>();
@@ -551,6 +578,7 @@ public class GameManager : MonoBehaviour{
         return Validtiles;
     }
 
+    //Chooses a valid start point for the player
     private int[] PlayerSpawn(){
         List<List<int>> Validtiles = new List<List<int>>();
         for (int i=1; i<gridsize-1;i++){
@@ -565,6 +593,7 @@ public class GameManager : MonoBehaviour{
         return new int[2]{Validtiles[hold][0],Validtiles[hold][1]};
     }
 
+    //Selects a valid location for enemies to appear
     private int[] EnemyValid(){
         int[] playerlocation = PlayerLocate();
         List<List<int>> Validtiles = new List<List<int>>();
@@ -580,6 +609,7 @@ public class GameManager : MonoBehaviour{
         return new int[2]{Validtiles[hold][1],Validtiles[hold][0]};
     }
 
+    //Creates an instance of an enemy
     private void EnemySpawn(){
         if(enemies.Count<enemycount){
             Random rando = new Random();
@@ -610,6 +640,7 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Gives an enemy its stats based on the depth and their enemy type
     private void EnemyStats(GameObject enemy, bool boss){
         Random rando = new Random();
         int monsternum=rando.Next(0,6);
@@ -660,6 +691,7 @@ public class GameManager : MonoBehaviour{
         //name, strength, agility, constitution, defence, intelligence, wisdom, spriteoffset
     }
 
+    //Finds which room a location is inside
     private int RoomFinder(int[] location){
         for (int i=0;i<trcorners.Count;i++){
             if((location[1]<=trcorners[i][0]) & (location[0]<=trcorners[i][1])){
@@ -730,6 +762,7 @@ public class GameManager : MonoBehaviour{
     //Function for burrowing through walls to create new corridors
     private bool DoorHole(List<int> currloc, int direction){
         switch(direction){
+            //North
             case 0:
                 switch(gridstore[currloc[0],currloc[1]]){
                     case 0:
@@ -764,6 +797,7 @@ public class GameManager : MonoBehaviour{
                         return true;
                 }
                 break;
+            //East
             case 1:
                 switch(gridstore[currloc[0],currloc[1]]){
                     case 0:
@@ -798,6 +832,7 @@ public class GameManager : MonoBehaviour{
                         return true;
                 }
                 break;
+            //South
             case 2:
                 switch(gridstore[currloc[0],currloc[1]]){
                     case 0:
@@ -832,6 +867,7 @@ public class GameManager : MonoBehaviour{
                         return true;
                 }
                 break;
+            //West
             case 3:
                 switch(gridstore[currloc[0],currloc[1]]){
                     case 0:
@@ -870,6 +906,7 @@ public class GameManager : MonoBehaviour{
         return false;
     }
 
+    //Function for connecting separate rooms with doors and corridors
     private void DoorMaker(){
         List<List<int>> cents = RoomCentFinder();
         List<List<int>> connects = Shortestroomfind(cents);
@@ -888,6 +925,7 @@ public class GameManager : MonoBehaviour{
                 if(difference[1]<0){
                     rightdire=false;
                 }
+                //While burrower hasn't yet reached target location
                 while(!((currloc[0]==cents[connects[i][1]][0]) & (currloc[1]==cents[connects[i][1]][1]))){
                     if (((Math.Abs(difference[0])<Math.Abs(difference[1])) & (difference[0]!=0))| (difference[1]==0)){
                         //Moving vertically
@@ -982,6 +1020,7 @@ public class GameManager : MonoBehaviour{
         EdgeSmoother();
     }
 
+    //Fixes any corridor generation overlap issues
     private void EdgeSmoother(){
         for(int i = 1; i<gridsize-1;i++){
             for(int j =1; j<gridsize -1; j++){
@@ -1214,6 +1253,7 @@ public class GameManager : MonoBehaviour{
     }
 
     //Flawed function, lowest entropy has the desire to naturally fill the area with block cells, when forcing rooms it will make minimum sized rooms
+    //This function does not run in the generation of a dungeon due to flaw
     private void GridGenLowestEntropy() { //Function for the generation of the dungeon layout
         //Preparation of initial variables
         GridStart();
@@ -1293,11 +1333,13 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Returns the location of the player
     private int[] PlayerLocate() {
         int[] PlayerLocation = {(int)tilemap.transform.position[0]/-2, (int)tilemap.transform.position[1]/-2};
         return PlayerLocation;
     }
 
+    //Checks if the entity is allowed to move
     private bool MoveAllow(int direction, int[] location) {
         int[] coord=new int[2]{location[0],location[1]};
         switch(direction){
@@ -1329,20 +1371,24 @@ public class GameManager : MonoBehaviour{
         return ((movevalid) && !(touchedinter));
     }
 
+    //Function for calling unique tile generation
     private void TileGen(){
         Random rando = new Random();
+        //Random generation between either magma or ice going first as they compete for the same tiles
         int magmaice = rando.Next(1,3);
         TileMaker(45+magmaice);
         TileMaker(45+3-magmaice);
         TileMaker(48);
     }
 
+    //Generates unique tile type
     private void TileMaker(int type){
         int freespots=OpenCounter();
         if(freespots>7){
             Random rando = new Random();
             List<List<int>> validtiles = ValidTiler();
             int randindex = rando.Next(0,validtiles.Count);
+            //Spike trap generation
             if(type!=48){
                 List<List<int>> queue = new List<List<int>>();
                 int counting = 0;
@@ -1368,6 +1414,7 @@ public class GameManager : MonoBehaviour{
                     Growingtile(new List<List<int>>{new List<int>{coord[0],coord[1]}},currtiles,tiles,type);
                 }
             }
+            //Magma and ice tile generation
             else{
                 int spikes = rando.Next(1,4);
                 int currspike = 0;
@@ -1382,6 +1429,7 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Function for growing a spread of unique tiles, used for magma and ice type tiles
     private void Growingtile(List<List<int>> visited, int currtile, int maxtile, int type){
         List<List<int>> store = new List<List<int>>();
         for(int i=0;i<visited.Count;i++){
@@ -1420,6 +1468,7 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Checks that the neighbouring tile is not already in the unique tile spread
     private bool EmptyQueueCheck(List<List<int>> queue,List<int> coordinate){
         bool checking=true;
         for(int i=0;i<queue.Count;i++){
@@ -1430,6 +1479,7 @@ public class GameManager : MonoBehaviour{
         return checking;
     }
 
+    //Adds tiles to the spread of empty tiles that can be changed by a neighbouring unique tile
     private List<List<int>> ConnectedEmpty(List<int> opener){
         List<List<int>> queue = new List<List<int>>();
         queue.Add(opener);
@@ -1468,6 +1518,7 @@ public class GameManager : MonoBehaviour{
         return queue;
     }
 
+    //Checks the amount of tiles that have an open space
     private int OpenCounter(){
         int counter=0;
         for (int i=0;i<gridsize;i++){
@@ -1479,7 +1530,7 @@ public class GameManager : MonoBehaviour{
         }
         return counter;
     }
-
+    //Function for performing desired behaviour for unique tile types
     private void LandOnTile(){
         int [] goallocate = new int[2]{(int)goal.position.x/-2,(int)goal.position.y/-2};
         //Ladder
@@ -1527,11 +1578,13 @@ public class GameManager : MonoBehaviour{
             UIstats();
             tilemap.SetTile(new Vector3Int(goallocate[0]*2+1, goallocate[1]*2+1, 0), tiles[48]);
         }
+        //If tile damages reduces the player to 0 health, game over
         if(Player.GetComponent<Character>().currhealth==0){
             GameOver();
         }
     }
 
+    //The function for when a player descends to the next layer
     public void Descend(){
         popupwindow.SetActive(false);
         popped=false;
@@ -1539,11 +1592,13 @@ public class GameManager : MonoBehaviour{
         GridDisplay();
     }
 
+    //When a player decides not to go down the ladder
     public void NoDescend(){
         popupwindow.SetActive(false);
         popped=false;
     }
 
+    //Creates the text popup for when a player clicks the emergency stuck button
     public void Stuck(){
         popped=true;
         popuptext.text="This button will return you to start with health and mana restored. Would you like to return?";
@@ -1555,6 +1610,7 @@ public class GameManager : MonoBehaviour{
         popupops.SetActive(false);
     }
     
+    //Creates the popup for combat starting
     private void combatpopup(){
         popped=true;
         popuptext.text=("You have been attacked by a "+combatenemy.GetComponent<Character>().charname+"!");
@@ -1566,6 +1622,7 @@ public class GameManager : MonoBehaviour{
         popupops.SetActive(false);
     }
 
+    //The function for finding the next location to get to in an enemy's patrol route
     private int[] Patrol(int[] enemylocation, int i){
         int[] goalcords = new int[2]{0,0};
         if(enemies[i].GetComponent<Character>().roomvisiting==null){
@@ -1589,6 +1646,7 @@ public class GameManager : MonoBehaviour{
         return goalcords;
     }
 
+    //Checks if there are any enemies in an enemy's predicted step
     private bool nearbyneighbour(int x, int y){
         for(int i=0;i<enemies.Count;i++){
             if ((enemies[i].GetComponent<Character>().goal.transform.position[0]-tilemap.transform.position.x)/2==x && (enemies[i].GetComponent<Character>().goal.transform.position[1]-tilemap.transform.position.y)/2==y){
@@ -1598,6 +1656,7 @@ public class GameManager : MonoBehaviour{
         return true;
     }
 
+    //Checks if a location is already in the list of locations for movement planning
     private bool direqueuecheck(List<List<int>> queue,int increment){
         bool checking=true;
         for(int i=0;i<queue.Count;i++){
@@ -1608,18 +1667,22 @@ public class GameManager : MonoBehaviour{
         return checking;
     }
 
+    //Function for choosing the direction to move for an enemy
     private int direchoose(int[] enemy, int[] player, int i, int smart){
         List<List<int>> queue = new List<List<int>> {new List<int>{enemy[0],enemy[1],4}};
         int[] goalcords = new int[2]{0,0};
         if(Math.Sqrt((player[0] - enemy[0]) * (player[0] - enemy[0]) + (player[1] - enemy[1]) * (player[1] - enemy[1])) <= 5){
+            //Predicts player movement
             if(smart>=3){
                 goalcords = new int[2] { (int)goal.position.x/-2, (int)goal.position.y/-2};
             }
+            //Chases player location
             else{
                 goalcords = new int[2] { (int)transform.position.x/-2, (int)transform.position.y/-2};
             }
         }
         else{
+            //Enemey follows patrol route
             goalcords=Patrol(enemy,i);
         }
         bool searching = true;
@@ -1703,6 +1766,7 @@ public class GameManager : MonoBehaviour{
         return randomdire(enemy);
     }
 
+    //Prepares the array of valid directions to move in
     private int randomdire(int[] enemy){
         Random rando = new Random();
         List<int> direoptions = new List<int>();
@@ -1728,11 +1792,14 @@ public class GameManager : MonoBehaviour{
         return direoptions[rando.Next(0, direoptions.Count)];
     }
 
+    //Chooses a random direction for the player to move in
     private void RandomMove(int[] enemylocation, int[] playerlocation, int i){
         int dire = randomdire(enemylocation);
+        //Enemy doesn't move if player lands on them
         if ((enemylocation[0] == (int)goal.position.x/-2) && (enemylocation[1] == (int)goal.position.y/-2)){
 
         }
+        //Moves in a random direction of available options
         else{
             switch(dire){
                 case 0:
@@ -1754,6 +1821,7 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Moves the enemy if they are able to onto the best tile for reaching the player
     private void ChaseMove(int[] enemylocation, int[] playerlocation,int i, int smart){
         int dire=direchoose(enemylocation, playerlocation, i,smart);
         switch(dire){
@@ -1782,6 +1850,7 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Gets the movement type of an enemy
     private int GetSmart(int i){
         switch (enemies[i].GetComponent<Character>().charname){
             //Bandit
@@ -1805,6 +1874,7 @@ public class GameManager : MonoBehaviour{
         return 0;
     }
 
+    //Chooses which style of movement an enemy will do based on proximity to player and the enemy movement type
     private void EnemyMove(){
         if(enemies!=null){
             for (int i=0;i<enemies.Count;i++){
@@ -1812,9 +1882,11 @@ public class GameManager : MonoBehaviour{
                 int[] playerlocation = PlayerLocate();
                 int smart = GetSmart(i);
                 if(smart==4){
+                    //Patrols for the player then chases at close proximity
                     ChaseMove(enemylocation,playerlocation,i,smart);
                 }
                 if(smart==2 || smart==3){
+                    //Chases at close proximity but moves randomly when not nearby
                     if (Math.Sqrt((playerlocation[0] - enemylocation[0]) * (playerlocation[0] - enemylocation[0]) + (playerlocation[1] - enemylocation[1]) * (playerlocation[1] - enemylocation[1])) <= 5)
                     {
                         ChaseMove(enemylocation,playerlocation,i,smart);
@@ -1824,12 +1896,14 @@ public class GameManager : MonoBehaviour{
                         RandomMove(enemylocation,playerlocation,i);
                     }
                 }
+                //Chases the player when at close range, otherwise doesn't move
                 if(smart==1){
                     if (Math.Sqrt((playerlocation[0] - enemylocation[0]) * (playerlocation[0] - enemylocation[0]) + (playerlocation[1] - enemylocation[1]) * (playerlocation[1] - enemylocation[1])) <= 5)
                     {
                         ChaseMove(enemylocation,playerlocation,i,smart);
                     }
                 }
+                //Moves randomly
                 if(smart==0){
                     RandomMove(enemylocation,playerlocation,i);
                 }
@@ -1837,6 +1911,7 @@ public class GameManager : MonoBehaviour{
         }
     }
     
+    //Moves all enemies towards their chosen tile
     private void EnemyMoving(){
         if(enemies!=null){
             for (int i=0;i<enemies.Count;i++){
@@ -1845,13 +1920,16 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Destroys an entity
     private void Kill(int i){
         if(bossfight){
+            //Destroys a boss
             Destroy(NPCs[i].GetComponent<Character>().goal);
             Destroy(NPCs[i]);
             NPCs.Remove(NPCs[i]);
         }
         else{
+            //Destroys an enemy and creates a new one
             if(!npcfight){
                 Destroy(enemies[i].GetComponent<Character>().goal);
                 Destroy(enemies[i]);
@@ -1861,12 +1939,14 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Checks if player has been caught by an enemy
     private bool CheckCaught(){
         if(enemies!=null){
             int[] playerlocation = {(int)goal.transform.position[0]/-2, (int)goal.transform.position[1]/-2};
             for (int i=0;i<enemies.Count;i++){
                 int[] enemylocation = new int[2]{(int)(enemies[i].GetComponent<Character>().goal.transform.position.x-tilemap.transform.position.x)/2,(int)(enemies[i].GetComponent<Character>().goal.transform.position.y-tilemap.transform.position.y)/2};
                 if(playerlocation[0]==enemylocation[0] & playerlocation[1]==enemylocation[1]){
+                    //Finds which enemy collided with player and calls for the combat starting popup
                     combatenemy=enemies[i];
                     combatenemyindex=i;
                     combatpopup();
@@ -1877,8 +1957,10 @@ public class GameManager : MonoBehaviour{
         return false;
     }
 
+    //Begins combat
     public void CombatStart(){
         fled=false;
+        //Prepares combat UI
         battleops.SetActive(false);
         playericon.GetComponent<Image>().sprite=Player.GetComponent<Character>().images[Player.GetComponent<Character>().spriteoffset];
         enemyicon.GetComponent<Image>().sprite=combatenemy.GetComponent<Character>().images[combatenemy.GetComponent<Character>().spriteoffset];
@@ -1889,6 +1971,7 @@ public class GameManager : MonoBehaviour{
         playername.text=(Player.GetComponent<Character>().charname);
         enemyname.text=(combatenemy.GetComponent<Character>().charname);
         CombatUI();
+        //Calculates turn order
         if(Player.GetComponent<Character>().agility>combatenemy.GetComponent<Character>().agility){
             turns=(int)(Player.GetComponent<Character>().agility/combatenemy.GetComponent<Character>().agility);
             currentturn=0;
@@ -1899,9 +1982,9 @@ public class GameManager : MonoBehaviour{
             currentturn=0;
             playerfirst=false;
         }
-        //Calculate the turn order
     }
 
+    //Checks whose turn it is
     private int TurnCheck(){
         if(currentturn%(turns+1)==0){
             if(playerfirst){
@@ -1925,11 +2008,15 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Carries out status effect at the end of a turn
     private void DoEffect(){
         turneffect=true;
+        //Player turn
         if(TurnCheck()==1){
+            //Checks for burning status
             int burningval=CheckStatus(false,"Burning");
             if(burningval!=-1){
+                //Applies burning effect
                 Player.GetComponent<Character>().Harm(5);
                 Player.GetComponent<Character>().statuses[burningval][2]=(int.Parse(Player.GetComponent<Character>().statuses[burningval][2])-1).ToString();
                 if(Player.GetComponent<Character>().statuses[burningval][2]=="0"){
@@ -1941,20 +2028,26 @@ public class GameManager : MonoBehaviour{
                 }
                 combattextpanel.SetActive(true);
             }
+            //Checks for charged status
             int chargedval=CheckStatus(false,"Charged");
             if(chargedval!=-1){
+                //Reduces charged counter
                 Player.GetComponent<Character>().statuses[chargedval][2]=(int.Parse(Player.GetComponent<Character>().statuses[chargedval][2])-1).ToString();
                 if(Player.GetComponent<Character>().statuses[chargedval][2]=="0"){
                     Player.GetComponent<Character>().statuses.RemoveAt(chargedval);
                 }
             }
+            //If no status effects move onto next turn
             if(chargedval+burningval==-2){
                 NextTurn();
             }
         }
+        //Enemy turn
         else{
+            //Checks if enemy has burning status
             int burningval=CheckStatus(true,"Burning");
             if(burningval!=-1){
+                //Applies burning effect
                 combatenemy.GetComponent<Character>().Harm(5);
                 combatenemy.GetComponent<Character>().statuses[burningval][2]=(int.Parse(combatenemy.GetComponent<Character>().statuses[burningval][2])-1).ToString();
                 if(combatenemy.GetComponent<Character>().statuses[burningval][2]=="0"){
@@ -1967,19 +2060,23 @@ public class GameManager : MonoBehaviour{
                 }
                 combattextpanel.SetActive(true);
             }
+            //Checks if enemy has charged status
             int chargedval=CheckStatus(true,"Charged");
             if(chargedval!=-1){
+                //Reduces charged counter
                 combatenemy.GetComponent<Character>().statuses[chargedval][2]=(int.Parse(combatenemy.GetComponent<Character>().statuses[chargedval][2])-1).ToString();
                 if(combatenemy.GetComponent<Character>().statuses[chargedval][2]=="0"){
                     combatenemy.GetComponent<Character>().statuses.RemoveAt(chargedval);
                 }
             }
+            //If no status effects move onto next turn
             if(chargedval+burningval==-2){
                 NextTurn();
             }
         }
     }
 
+    //Function for moving onto the next turn or checks if combat should end
     public void NextTurn(){
         //Checks if secondary entity turn
         combattextpanel.SetActive(false);
@@ -1992,6 +2089,7 @@ public class GameManager : MonoBehaviour{
         if(combatenemy.GetComponent<Character>().currhealth==0){
             endcombat(true);
         }
+        //Changes turn
         if((!fled) && (Player.GetComponent<Character>().currhealth!=0) && (combatenemy.GetComponent<Character>().currhealth!=0)){
             if(turneffect){
                 currentturn++;
@@ -2008,12 +2106,14 @@ public class GameManager : MonoBehaviour{
                     turneffect=false;
                 }
             }
+            //Performs status effect
             else{
                 DoEffect();
             }
         }
     }
 
+    //Provides the exp menu after ending combat and gives level up options if needed
     private void endcombat(bool success){
         UIstats();
         if(npcfight){
@@ -2037,6 +2137,7 @@ public class GameManager : MonoBehaviour{
             }
             else{
                 int neededexp = (int)(Math.Pow(1.2,Player.GetComponent<Character>().level)*500);
+                //Player gains no exp for fighting the Dummy NPC
                 if(npcfight){
                     expgained = 0;
                 }
@@ -2045,6 +2146,7 @@ public class GameManager : MonoBehaviour{
                 }
                 exptext.text=("exp gained: "+expgained);
                 Player.GetComponent<Character>().experience=Player.GetComponent<Character>().experience+expgained;
+                //Provides level up stat options
                 if (Player.GetComponent<Character>().experience>neededexp){
                     Player.GetComponent<Character>().experience=Player.GetComponent<Character>().experience-neededexp;
                     Player.GetComponent<Character>().level=Player.GetComponent<Character>().level+1;
@@ -2065,20 +2167,26 @@ public class GameManager : MonoBehaviour{
             GameOver();
         }
     }
+
+    //Function for aftermath of combat
     public void CombatResult(){
         UIstats();
         if(bossfight){
+            //Ends combat, destroys the boss and shows the winning screen
             popped=false;
             Kill(interactindex);
             exppanel.SetActive(false);
             GameOver();
         }
         else{
+            //Ends combat and destroys the enemy
             popped=false;
             Kill(combatenemyindex);
             exppanel.SetActive(false);
         }
     }
+
+    //Provides the game over screen for either winning or losing
     private void GameOver(){
         gameoverpanel.SetActive(true);
         if(Player.GetComponent<Character>().currhealth==0){
@@ -2091,6 +2199,8 @@ public class GameManager : MonoBehaviour{
             "don't want it to be over?\n\ngo back into the dungeon, fight the boss again, except this time it's stronger!");
         }
     }
+
+    //Sends the player back to the lobby layer of the dungeon
     public void SendBack(){
         popped=false;
         gameoverpanel.SetActive(false);
@@ -2100,10 +2210,12 @@ public class GameManager : MonoBehaviour{
         GridDisplay();
     }
 
+    //Resets combat UI for the player turn
     private void PlayerTurn(){
         combatoptions.SetActive(true);
     }
 
+    //Returns the amount of available spells that the current enemy can cast
     private int AvailableSpells(){
         int curr=combatenemy.GetComponent<Character>().currmana;
         List<int> costs = new List<int>{50,40,25,35,45};
@@ -2116,6 +2228,7 @@ public class GameManager : MonoBehaviour{
         return spellcount;
     }
 
+    //Choose the weighted random behaviour of an enemy
     private void EnemyTurn(){
         //bandit orc goblin slime golem
         Random rando = new Random();
@@ -2124,6 +2237,7 @@ public class GameManager : MonoBehaviour{
         int choosedefend=0;
         int choosespell=0;
         int chooseflee=0;
+        //Regular enemy behaviour
         if(depth!=bosslevel){
             switch(combatenemy.GetComponent<Character>().charname){
                 case "Bandit":
@@ -2199,6 +2313,7 @@ public class GameManager : MonoBehaviour{
                     break;
             }
         }
+        //Boss enemy behaviour
         else{
             switch(combatenemy.GetComponent<Character>().charname){
                 case "Bandit":
@@ -2270,6 +2385,7 @@ public class GameManager : MonoBehaviour{
                     break;
             }
         }
+        //Determines which behaviour is performed on the random chance
         int roll = rando.Next(1,101);
         if(roll<=chooseattack){
             Attack();
@@ -2298,11 +2414,8 @@ public class GameManager : MonoBehaviour{
             }
         }
     }
-    //new List<string>{"Heal Wounds","50","Heals the user by restoring some lost health"},
-    //new List<string>{"Breathe Fire","40","Applies burning to enemy, dealing damage each enemy turn"},
-    //new List<string>{"Arcane Knife","25","Heals the user by restoring some lost health"},
-    //new List<string>{"Power Charge","35","Heals the user by restoring some lost health"},
-    //new List<string>{"Wild Surge","45","Heals the user by restoring some lost health"}
+
+    //Chooses a spell at random for the list of spells currently castable by the enemy
     private void EnemySpells(){
         List<int> options = new List<int>();
         int currmana=combatenemy.GetComponent<Character>().currmana;
@@ -2355,6 +2468,7 @@ public class GameManager : MonoBehaviour{
         Spells();
     }
 
+    //Checks if an entity currently has a particular status or not
     private int CheckStatus(bool playerenemy,string status){
         int found=-1;
         if(playerenemy){//Enemy
@@ -2373,76 +2487,94 @@ public class GameManager : MonoBehaviour{
         }
         return found;
     }
+
+    //Function for performing a spell attack with intelligence as the attack stat
     private void SpellAttack(int power, string spellname){
         int damage = 0;
+        //Player turn
         if(TurnCheck()==1){
             int defence=combatenemy.GetComponent<Character>().defence;
             int attackstat=Player.GetComponent<Character>().intelligence;
+            //Checks if player has charged status
             int chargefound=CheckStatus(false,"Charged");
             if(chargefound!=-1){
                 attackstat = (int)(attackstat*1.2);
             }
+            //Checks if enemy has defended status
             int defendfound=CheckStatus(true,"Defending");
             if(defendfound!=-1){
                 defence=defence*2;
                 combatenemy.GetComponent<Character>().statuses.RemoveAt(defendfound);
             }
+            //Damage calculation
             damage = (int)(((2*Player.GetComponent<Character>().level)/3+2)*power*attackstat/defence)/10;
             combatenemy.GetComponent<Character>().Harm(damage);
             combattext.text=("Your "+spellname+" hit the " +combatenemy.GetComponent<Character>().charname+" for "+damage+" damage!");
         }
+        //Enemy turn
         else{
             int defence=Player.GetComponent<Character>().defence;
             int attackstat=combatenemy.GetComponent<Character>().intelligence;
+            //Checks if enemy has charged status
             int chargefound=CheckStatus(true,"Charged");
             if(chargefound!=-1){
                 attackstat = (int)(attackstat*1.2);
             }
+            //Checks if player has defended status
             int defendfound=CheckStatus(false,"Defending");
             if(defendfound!=-1){
                 defence=defence*2;
                 Player.GetComponent<Character>().statuses.RemoveAt(defendfound);
             }
+            //Damage calculation
             damage = (int)(((2*combatenemy.GetComponent<Character>().level)/3+2)*power*attackstat/defence)/10;
-            
             Player.GetComponent<Character>().Harm(damage);
             combattext.text=("You were attacked by the "+combatenemy.GetComponent<Character>().charname+"'s "+spellname+" for "+damage+" damage!");
         }
         combattextpanel.SetActive(true);
         CombatUI();
     }
+
+    //Performs a normal attack against a target using strength as the attack stat
     public void Attack(){
         int damage = 0;
+        //Player turn
         if(TurnCheck()==1){
             int defence=combatenemy.GetComponent<Character>().defence;
             int attackstat=Player.GetComponent<Character>().strength;
+            //Checks if player has charged status
             int chargefound=CheckStatus(false,"Charged");
             if(chargefound!=-1){
                 attackstat = (int)(attackstat*1.2);
             }
+            //Checks if enemy has defending status
             int defendfound=CheckStatus(true,"Defending");
             if(defendfound!=-1){
                 defence=defence*2;
                 combatenemy.GetComponent<Character>().statuses.RemoveAt(defendfound);
             }
+            //Calculates and deals damage
             damage = (int)(((2*Player.GetComponent<Character>().level)/3+2)*40*attackstat/defence)/10;
             combatenemy.GetComponent<Character>().Harm(damage);
             combattext.text=("You attacked the "+combatenemy.GetComponent<Character>().charname+" for "+damage+" damage!");
         }
+        //Enemy turn
         else{
             int defence=Player.GetComponent<Character>().defence;
             int attackstat=combatenemy.GetComponent<Character>().strength;
+            //Checks if enemy has charged status
             int chargefound=CheckStatus(true,"Charged");
             if(chargefound!=-1){
                 attackstat = (int)(attackstat*1.2);
             }
+            //Checks if player has defending status
             int defendfound=CheckStatus(false,"Defending");
             if(defendfound!=-1){
                 defence=defence*2;
                 Player.GetComponent<Character>().statuses.RemoveAt(defendfound);
             }
+            //Calculates and deals damage
             damage = (int)(((2*combatenemy.GetComponent<Character>().level)/3+2)*40*attackstat/defence)/10;
-            
             Player.GetComponent<Character>().Harm(damage);
             combattext.text=("You were attacked by the "+combatenemy.GetComponent<Character>().charname+" for "+damage+" damage!");
         }
@@ -2450,11 +2582,14 @@ public class GameManager : MonoBehaviour{
         CombatUI();
     }
 
+    //Adds the defending status to the user
     public void Defend(){
+        //Player turn
         if(TurnCheck()==1){
             Player.GetComponent<Character>().statuses.Add(new List<string>{"Defending","Attack","1"});
             combattext.text=("You have defended yourself against an attack!");
         }
+        //Enemy turn
         else{
             combatenemy.GetComponent<Character>().statuses.Add(new List<string>{"Defending","Attack","1"});
             combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" has defended itself against an attack!");
@@ -2462,6 +2597,7 @@ public class GameManager : MonoBehaviour{
         combattextpanel.SetActive(true);
     }
 
+    //Creates a spell description for currently selected spell
     public void Spellview(int spellchoice){
         spellviewpanel.SetActive(true);
         tempspell=spellchoice;
@@ -2474,18 +2610,20 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Performs the effect for a spell
     public void Spells(){
         Random rando = new Random();
+        //Player turn
         if(TurnCheck()==1){
             Player.GetComponent<Character>().currmana = Player.GetComponent<Character>().currmana - int.Parse(spelllist[tempspell][1]);
             switch(tempspell){
-                case 0: //Heal Wounds
+                case 0: //Heal Wounds, heals the user for 3 x their intelligence stat
                     int healing = 3*Player.GetComponent<Character>().intelligence;
                     Player.GetComponent<Character>().Heal(healing);
                     combattext.text=("You have healed yourself for "+healing+" health!");
                     combattextpanel.SetActive(true);
                     break;
-                case 1: //Breathe Fire
+                case 1: //Breathe Fire, applies burning status to target if they don't already have it
                     if(CheckStatus(true,"Burning")==-1){
                         combatenemy.GetComponent<Character>().statuses.Add(new List<string>{"Burning","Turns",rando.Next(2,6).ToString()});
                         combattext.text=("Your fire breath set the "+combatenemy.GetComponent<Character>().charname+" on fire!");
@@ -2495,10 +2633,10 @@ public class GameManager : MonoBehaviour{
                     }
                     combattextpanel.SetActive(true);
                     break;
-                case 2: //Arcane Knife
+                case 2: //Arcane Knife, deals a 40 power attack
                     SpellAttack(40,"Arcane Knife");
                     break;
-                case 3: //Power Charge
+                case 3: //Power Charge, applies the charged status to the user
                     if(CheckStatus(false,"Charged")==-1){
                         Player.GetComponent<Character>().statuses.Add(new List<string>{"Charged","Turns","10"});
                         combattext.text=("Your power charge fills you with fighting energy!");
@@ -2508,7 +2646,7 @@ public class GameManager : MonoBehaviour{
                     }
                     combattextpanel.SetActive(true);
                     break;
-                case 4: //Wild Surge
+                case 4: //Wild Surge, has a 33% chance of dealing a 120 power attack
                     int chance = rando.Next(1,101);
                     if(chance<=33){
                         SpellAttack(120,"Wild Surge");
@@ -2520,16 +2658,17 @@ public class GameManager : MonoBehaviour{
                     break;
             }
         }
+        //Enemy turn
         else{
             combatenemy.GetComponent<Character>().currmana = combatenemy.GetComponent<Character>().currmana - int.Parse(spelllist[tempspell][1]);
             switch(tempspell){
-                case 0: //Heal Wounds
+                case 0: //Heal Wounds, heals the user for 3 x their intelligence stat
                     int healing = 3*combatenemy.GetComponent<Character>().intelligence;
                     combatenemy.GetComponent<Character>().Heal(healing);
                     combattext.text=(combatenemy.GetComponent<Character>().charname+" healed themself for "+healing+" health!");
                     combattextpanel.SetActive(true);
                     break;
-                case 1: //Breathe Fire
+                case 1: //Breathe Fire, applies burning status to target if they don't already have it
                     if(CheckStatus(false,"Burning")==-1){
                         Player.GetComponent<Character>().statuses.Add(new List<string>{"Burning","Turns",rando.Next(2,6).ToString()});
                         combattext.text=("The "+combatenemy.GetComponent<Character>().charname+"'s fire breath set you on fire!");
@@ -2539,10 +2678,10 @@ public class GameManager : MonoBehaviour{
                     }
                     combattextpanel.SetActive(true);
                     break;
-                case 2: //Arcane Knife
+                case 2: //Arcane Knife, deals a 40 power attack
                     SpellAttack(40,"Arcane Knife");
                     break;
-                case 3: //Power Charge
+                case 3: //Power Charge, applies the charged status to the user
                     if(CheckStatus(true,"Charged")==-1){
                         combatenemy.GetComponent<Character>().statuses.Add(new List<string>{"Charged","Turns","10"});
                         combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" used power charge to strengthen themself!");
@@ -2552,7 +2691,7 @@ public class GameManager : MonoBehaviour{
                     }
                     combattextpanel.SetActive(true);
                     break;
-                case 4: //Wild Surge
+                case 4: //Wild Surge, has a 33% chance of dealing a 120 power attack
                     int chance = rando.Next(1,101);
                     if(chance<=33){
                         SpellAttack(120,"Wild Surge");
@@ -2567,6 +2706,7 @@ public class GameManager : MonoBehaviour{
         CombatUI();
     }
 
+    //User attempts to free from combat, automatic success if faster, chance of success if slower
     public void Flee(){
         int playspeed=Player.GetComponent<Character>().agility;
         int enemspeed=combatenemy.GetComponent<Character>().agility;
@@ -2578,10 +2718,12 @@ public class GameManager : MonoBehaviour{
             //Player Turn
             chance=(int)((playspeed*100)/enemspeed);
             if((roll<=chance) && !(bossfight)){
+                //Successfully fled
                 combattext.text=("You have successfully fled from combat!");
                 fled=true;
             }
             else{
+                //Failed to flee
                 combattext.text=("You were not able to flee from combat!");
             }
         }
@@ -2589,15 +2731,18 @@ public class GameManager : MonoBehaviour{
             //Enemy Turn
             chance=(int)((enemspeed*100)/playspeed);
             if(roll<=chance){
+                //Successfully fled
                 combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" has successfully run away!");
                 fled=true;
             }
             else{
+                //Failed to flee
                 combattext.text=("The "+combatenemy.GetComponent<Character>().charname+" tried to run away but failed!");
             }
         }
     }
 
+    //Function for calculating the top left Heads Up Display stats
     private void UIstats(){
         UInametext.text = (Player.GetComponent<Character>().charname+" - LVL "+Player.GetComponent<Character>().level);
         UIHPtext.text = ("Health: "+Player.GetComponent<Character>().currhealth+"/"+Player.GetComponent<Character>().maxhealth);
@@ -2606,6 +2751,7 @@ public class GameManager : MonoBehaviour{
         UIdepthtext.text =("Depth: "+depth);
     }
 
+    //Updates usable stat points when used
     public void UpdateStats(string Option){
         if(statpoints>0){
             statpoints--;
@@ -2614,6 +2760,7 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Updates stat allocation display upon change
     private void UpdateStatsView(){
         exptext.text=("exp gained: "+expgained+"\nlevel up\nusable points: "+statpoints);
         strtext.text=("strength: "+Player.GetComponent<Character>().strength);
@@ -2634,6 +2781,7 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Sets the combat UI and updates the health and mana bars for player and enemy stats when needed
     private void CombatUI(){
         playerhealth.text=(Player.GetComponent<Character>().currhealth+"/"+Player.GetComponent<Character>().maxhealth);
         playermana.text=(Player.GetComponent<Character>().currmana+"/"+Player.GetComponent<Character>().maxmana);
@@ -2665,6 +2813,7 @@ public class GameManager : MonoBehaviour{
         enemymanabar.transform.position -= new Vector3(enemymanadiff*1.5f, 0, 0);
     }
 
+    //Interacts with target in front of player
     private void Interact(int[] coords){
         if(NPCs!=null){
             for (int i = 0;i<NPCs.Count;i++){
@@ -2682,6 +2831,7 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Scrolls through dialogue window with NPC
     public void DialogueScroll(){
         string result = NPCs[interactindex].GetComponent<NPC>().DiaRead();
         popuptext.text=result;
@@ -2715,6 +2865,7 @@ public class GameManager : MonoBehaviour{
         }
     }
 
+    //Prepares the start of the main game upon loading
     void Start() {
         depth=0;
         wins=0;
@@ -2727,6 +2878,7 @@ public class GameManager : MonoBehaviour{
         UIstats();
     }
 
+    //Update function used for detection of player input
     void Update() {
         //Movement works through moving a goal object then sliding the tilemap towards it
         transform.position = Vector3.MoveTowards(transform.position, goal.position, speed*Time.deltaTime);
@@ -2784,6 +2936,7 @@ public class GameManager : MonoBehaviour{
                     }
                 }
                 else{
+                    //Checks if caught by enemy then if landed on unique tile
                     tileactive=true;
                     CheckCaught();
                     LandOnTile();

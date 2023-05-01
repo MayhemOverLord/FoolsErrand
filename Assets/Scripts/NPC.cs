@@ -10,11 +10,13 @@ public class NPC : MonoBehaviour {
     public int DialogueSteps;
     public List<int[]> Boundaries;
     public void initNPC(List<string> Dia, string Post, string Typ, int[] coords) {
+        //Prepares initial attributes
         Dialogue=Dia;
         PostDialogue=Post;
         Type=Typ;
         DialogueSteps=-1;
         if(Type=="BOSS"){
+            //When an enemy is a boss they take up 6 spaces in size
             Boundaries = new List<int[]>{
                 new int[2]{coords[0]-1,coords[1]},
                 new int[2]{coords[0],coords[1]},
@@ -28,6 +30,8 @@ public class NPC : MonoBehaviour {
             Boundaries = new List<int[]>{new int[2]{coords[0],coords[1]}};
         }
     }
+
+    //Function for scrolling through dialogue
     public string DiaRead(){
         DialogueSteps++;
         if(DialogueSteps>=Dialogue.Count){
